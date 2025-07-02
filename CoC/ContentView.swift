@@ -16,14 +16,58 @@ struct ContentView: View {
     @State private var showingSettings = false
     @State private var destinations: [Destination] = []
     @State private var selectedDestination: Destination?
+    @State private var selectedCard: CulturalCard?
+    @State private var showingVoiceRecording = false
+    @StateObject private var voiceRecorder = VoiceRecorder()
+    @StateObject private var aiGenerator = AICardGenerator()
     
     var body: some View {
         NavigationStack {
             ZStack {
                 // Main Content (Full Screen)
-                if let selectedDestination = selectedDestination {
+                if let selectedCard = selectedCard, let selectedDestination = selectedDestination {
+                    // Cultural Card Detail View
+                    CulturalCardDetailView(
+                        card: selectedCard,
+                        destination: selectedDestination
+                    ) {
+                        withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) {
+                            self.selectedCard = nil
+                        }
+                    }
+                    .transition(.asymmetric(
+                        insertion: .scale(scale: 0.1).combined(with: .opacity),
+                        removal: .scale(scale: 0.1).combined(with: .opacity)
+                    ))
+                    .zIndex(2)
+                } else if showingVoiceRecording, let selectedDestination = selectedDestination {
+                    // Voice Recording Interface
+                    VoiceRecordingCardView(
+                        destination: selectedDestination,
+                        voiceRecorder: voiceRecorder,
+                        aiGenerator: aiGenerator
+                    ) { generatedCard in
+                        // Handle successful card generation
+                        addGeneratedCard(generatedCard, to: selectedDestination)
+                        showingVoiceRecording = false
+                    } onCancel: {
+                        // Handle cancellation
+                        showingVoiceRecording = false
+                    }
+                    .zIndex(1)
+                } else if let selectedDestination = selectedDestination {
                     // Destination Detail View
-                    DestinationDetailView(destination: selectedDestination) {
+                    DestinationDetailView(
+                        destination: selectedDestination,
+                        onCardTap: { card in
+                            withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) {
+                                self.selectedCard = card
+                            }
+                        },
+                        onAddCard: {
+                            addNewCard()
+                        }
+                    ) {
                         self.selectedDestination = nil
                     }
                 } else {
@@ -36,6 +80,15 @@ struct ContentView: View {
                 // Floating Buttons Overlay
                 VStack {
                     HStack {
+                        // Floating Add Button (Top Left) - Only show in destinations overview
+                        if selectedDestination == nil {
+                            AddDestinationButton {
+                                addNewDestination()
+                            }
+                            .padding(.leading, 20)
+                            .padding(.top, 8)
+                        }
+                        
                         Spacer()
                         
                         // Floating Settings Button (Top Right)
@@ -80,8 +133,17 @@ struct ContentView: View {
     }
     
     private func addNewCard() {
-        // TODO: Show card creation sheet
-        print("Adding new cultural card")
+        // Show voice recording interface for AI card generation
+        withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) {
+            showingVoiceRecording = true
+        }
+    }
+    
+    private func addGeneratedCard(_ card: CulturalCard, to destination: Destination) {
+        // Find the destination index and add the card
+        if let index = destinations.firstIndex(where: { $0.id == destination.id }) {
+            destinations[index].addCard(card)
+        }
     }
     
     private func loadSampleData() {
@@ -123,6 +185,8 @@ struct DestinationsOverviewView: View {
 // MARK: - Destination Detail View
 struct DestinationDetailView: View {
     let destination: Destination
+    let onCardTap: (CulturalCard) -> Void
+    let onAddCard: () -> Void
     let onBack: () -> Void
     
     var body: some View {
@@ -170,7 +234,7 @@ struct DestinationDetailView: View {
                     .padding(.bottom, 20)
                     
                     // Staggered Cultural Cards Layout (PPnotes style)
-                    StaggeredCulturalCardsGrid(cards: destination.culturalCards)
+                    StaggeredCulturalCardsGrid(cards: destination.culturalCards, onCardTap: onCardTap)
                         .padding(.horizontal, 20)
                         .padding(.bottom, 32)
                 }
@@ -201,6 +265,19 @@ struct DestinationDetailView: View {
                     Spacer()
                 }
                 Spacer()
+            }
+            
+            // Floating Add Card Button (Bottom Center)
+            VStack {
+                Spacer()
+                HStack {
+                    Spacer()
+                    AddCulturalCardButton {
+                        onAddCard()
+                    }
+                    Spacer()
+                }
+                .padding(.bottom, 30)
             }
         }
     }
@@ -271,6 +348,476 @@ struct FloatingActionButton: View {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                     pulseAnimation = true
                 }
+            }
+        }
+    }
+}
+
+// MARK: - Add Destination Button
+struct AddDestinationButton: View {
+    let action: () -> Void
+    @State private var isPressed = false
+    @State private var pulseAnimation = false
+    
+    private var pulseEffect: CGFloat {
+        pulseAnimation ? 1.05 : 1.0
+    }
+    
+    var body: some View {
+        Button(action: {
+            // Press animation feedback
+            withAnimation(.easeInOut(duration: 0.1)) {
+                isPressed = true
+            }
+            
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                withAnimation(.easeInOut(duration: 0.1)) {
+                    isPressed = false
+                }
+            }
+            
+            action()
+        }) {
+            Text("+")
+                .font(.title2)
+                .fontWeight(.semibold)
+                .foregroundColor(.white)
+                .scaleEffect(isPressed ? 0.9 : 1.0)
+                .frame(width: 44, height: 44)
+                .background(Color.cocPurple)
+                .clipShape(Circle())
+                .shadow(color: .black.opacity(isPressed ? 0.3 : 0.2), radius: isPressed ? 6 : 4, x: 0, y: isPressed ? 3 : 2)
+                .scaleEffect(pulseEffect)
+                .animation(.easeInOut(duration: 0.1), value: isPressed)
+                .animation(.easeInOut(duration: 2.0).repeatForever(autoreverses: true), value: pulseAnimation)
+        }
+        .buttonStyle(PlainButtonStyle())
+        .onAppear {
+            // Start subtle pulse animation
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                pulseAnimation = true
+            }
+        }
+    }
+}
+
+// MARK: - Add Cultural Card Button
+struct AddCulturalCardButton: View {
+    let action: () -> Void
+    @State private var isPressed = false
+    @State private var pulseAnimation = false
+    
+    private var pulseEffect: CGFloat {
+        pulseAnimation ? 1.08 : 1.0
+    }
+    
+    var body: some View {
+        Button(action: {
+            // Press animation feedback
+            withAnimation(.easeInOut(duration: 0.1)) {
+                isPressed = true
+            }
+            
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                withAnimation(.easeInOut(duration: 0.1)) {
+                    isPressed = false
+                }
+            }
+            
+            action()
+        }) {
+            Text("+")
+                .font(.title)
+                .fontWeight(.bold)
+                .foregroundColor(.white)
+                .scaleEffect(isPressed ? 0.9 : 1.0)
+                .frame(width: 60, height: 60)
+                .background(Color.cocPurple)
+                .clipShape(Circle())
+                .shadow(color: .black.opacity(isPressed ? 0.4 : 0.25), radius: isPressed ? 8 : 12, x: 0, y: isPressed ? 4 : 6)
+                .scaleEffect(pulseEffect)
+                .animation(.easeInOut(duration: 0.1), value: isPressed)
+                .animation(.easeInOut(duration: 2.5).repeatForever(autoreverses: true), value: pulseAnimation)
+        }
+        .buttonStyle(PlainButtonStyle())
+        .onAppear {
+            // Start subtle pulse animation
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
+                pulseAnimation = true
+            }
+        }
+    }
+}
+
+// MARK: - Voice Recording Card View
+struct VoiceRecordingCardView: View {
+    let destination: Destination
+    @ObservedObject var voiceRecorder: VoiceRecorder
+    @ObservedObject var aiGenerator: AICardGenerator
+    let onCardGenerated: (CulturalCard) -> Void
+    let onCancel: () -> Void
+    
+    @State private var showingGeneratedCard = false
+    @State private var generatedCard: CulturalCard?
+    @State private var recordingState: RecordingState = .ready
+    @State private var waveformTrigger = false
+    
+    enum RecordingState {
+        case ready
+        case recording
+        case processing
+        case generated
+        case error
+    }
+    
+    var body: some View {
+        ZStack {
+            // Background overlay
+            Color.black.opacity(0.3)
+                .ignoresSafeArea()
+                .onTapGesture {
+                    if recordingState == .ready {
+                        onCancel()
+                    }
+                }
+            
+            // Main Card Content
+            VStack(spacing: 0) {
+                if showingGeneratedCard, let card = generatedCard {
+                    // Show generated card
+                    GeneratedCardContentView(card: card, destination: destination)
+                        .transition(.asymmetric(
+                            insertion: .scale.combined(with: .opacity),
+                            removal: .scale.combined(with: .opacity)
+                        ))
+                } else {
+                    // Voice recording interface
+                    EmptyCardWithMicrophoneView(
+                        destination: destination,
+                        voiceRecorder: voiceRecorder,
+                        aiGenerator: aiGenerator,
+                        recordingState: $recordingState,
+                        waveformTrigger: $waveformTrigger
+                    )
+                }
+                
+                // Action buttons
+                if showingGeneratedCard {
+                    HStack(spacing: 20) {
+                        Button("Regenerate") {
+                            regenerateCard()
+                        }
+                        .foregroundColor(.cocPurple)
+                        
+                        Button("Save Card") {
+                            if let card = generatedCard {
+                                onCardGenerated(card)
+                            }
+                        }
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 12)
+                        .background(Color.cocPurple)
+                        .clipShape(Capsule())
+                    }
+                    .padding(.top, 20)
+                    .padding(.bottom, 30)
+                }
+            }
+            .background(Color(.systemBackground))
+            .clipShape(RoundedRectangle(cornerRadius: 20))
+            .shadow(color: .black.opacity(0.2), radius: 20, x: 0, y: 10)
+            .padding(.horizontal, 20)
+            .scaleEffect(showingGeneratedCard ? 1.0 : 0.9)
+            .animation(.spring(response: 0.6, dampingFraction: 0.8), value: showingGeneratedCard)
+        }
+        .onChange(of: recordingState) { oldValue, newValue in
+            handleStateChange(from: oldValue, to: newValue)
+        }
+    }
+    
+    private func handleStateChange(from oldState: RecordingState, to newState: RecordingState) {
+        switch newState {
+        case .processing:
+            processVoiceInput()
+        case .generated:
+            withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) {
+                showingGeneratedCard = true
+            }
+        default:
+            break
+        }
+    }
+    
+    private func processVoiceInput() {
+        guard !voiceRecorder.transcribedText.isEmpty else {
+            recordingState = .error
+            return
+        }
+        
+        Task {
+            do {
+                let card = try await aiGenerator.generateCulturalCard(
+                    destination: destination.name,
+                    userQuery: voiceRecorder.transcribedText
+                )
+                
+                await MainActor.run {
+                    generatedCard = card
+                    recordingState = .generated
+                }
+            } catch {
+                await MainActor.run {
+                    recordingState = .error
+                }
+            }
+        }
+    }
+    
+    private func regenerateCard() {
+        withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) {
+            showingGeneratedCard = false
+        }
+        
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+            recordingState = .processing
+        }
+    }
+}
+
+// MARK: - Empty Card with Microphone View
+struct EmptyCardWithMicrophoneView: View {
+    let destination: Destination
+    @ObservedObject var voiceRecorder: VoiceRecorder
+    @ObservedObject var aiGenerator: AICardGenerator
+    @Binding var recordingState: VoiceRecordingCardView.RecordingState
+    @Binding var waveformTrigger: Bool
+    
+    var body: some View {
+        VStack(spacing: 24) {
+            // Header
+            VStack(spacing: 8) {
+                Text("Cultural Insight")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                    .textCase(.uppercase)
+                    .tracking(1)
+                
+                HStack {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Ask about \(destination.name)")
+                            .font(.headline)
+                            .fontWeight(.semibold)
+                        
+                        Text(destination.flag)
+                            .font(.system(size: 32))
+                    }
+                    Spacer()
+                }
+            }
+            .padding(.horizontal, 24)
+            .padding(.top, 24)
+            
+            // Recording Interface
+            VStack(spacing: 20) {
+                if recordingState == .recording {
+                    // Waveform visualization during recording
+                    WaveformVisualizationView(
+                        audioLevels: voiceRecorder.audioLevels,
+                        isAnimating: voiceRecorder.isRecording
+                    )
+                    .frame(height: 60)
+                    .padding(.horizontal, 24)
+                    
+                    Text("Listening...")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                } else if recordingState == .processing {
+                    // AI generation progress
+                    VStack(spacing: 12) {
+                        ProgressView()
+                            .scaleEffect(1.2)
+                        
+                        Text(aiGenerator.generationProgress.isEmpty ? "Processing..." : aiGenerator.generationProgress)
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                    }
+                } else if recordingState == .error {
+                    // Error state
+                    VStack(spacing: 12) {
+                        Text("❌")
+                            .font(.system(size: 40))
+                        
+                        Text(voiceRecorder.errorMessage ?? aiGenerator.errorMessage ?? "Something went wrong")
+                            .font(.subheadline)
+                            .foregroundColor(.red)
+                            .multilineTextAlignment(.center)
+                    }
+                } else {
+                    // Ready state - show microphone
+                    VStack(spacing: 16) {
+                        MicrophoneButton(
+                            isRecording: voiceRecorder.isRecording,
+                            hasPermission: voiceRecorder.hasPermission
+                        ) {
+                            if voiceRecorder.isRecording {
+                                voiceRecorder.stopRecording()
+                                recordingState = .processing
+                            } else {
+                                voiceRecorder.startRecording()
+                                recordingState = .recording
+                            }
+                        }
+                        
+                        Text("Tap to ask about \(destination.name) culture")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
+                    }
+                }
+            }
+            .frame(minHeight: 120)
+            
+            Spacer()
+        }
+        .frame(minHeight: 300)
+    }
+}
+
+// MARK: - Generated Card Content View
+struct GeneratedCardContentView: View {
+    let card: CulturalCard
+    let destination: Destination
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            // Header
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Cultural Insight")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                    .textCase(.uppercase)
+                    .tracking(1)
+                
+                HStack {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(card.title)
+                            .font(.headline)
+                            .fontWeight(.semibold)
+                        
+                        if let category = card.category {
+                            Text(category.title)
+                                .font(.caption)
+                                .foregroundColor(.cocPurple)
+                                .fontWeight(.medium)
+                        }
+                    }
+                    
+                    Spacer()
+                    
+                    Text(destination.flag)
+                        .font(.system(size: 32))
+                }
+            }
+            .padding(.horizontal, 24)
+            .padding(.top, 24)
+            
+            // Content
+            VStack(alignment: .leading, spacing: 16) {
+                if let insight = card.insight {
+                    Text(insight)
+                        .font(.body)
+                        .lineLimit(nil)
+                        .multilineTextAlignment(.leading)
+                }
+                
+                if let tips = card.practicalTips, !tips.isEmpty {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Practical Tips:")
+                            .font(.subheadline)
+                            .fontWeight(.semibold)
+                            .foregroundColor(.cocPurple)
+                        
+                        ForEach(tips, id: \.self) { tip in
+                            HStack(alignment: .top, spacing: 8) {
+                                Text("•")
+                                    .foregroundColor(.cocPurple)
+                                    .fontWeight(.bold)
+                                Text(tip)
+                                    .font(.caption)
+                                    .multilineTextAlignment(.leading)
+                                Spacer()
+                            }
+                        }
+                    }
+                }
+            }
+            .padding(.horizontal, 24)
+            .padding(.bottom, 20)
+            
+            Spacer()
+        }
+    }
+}
+
+// MARK: - Microphone Button
+struct MicrophoneButton: View {
+    let isRecording: Bool
+    let hasPermission: Bool
+    let action: () -> Void
+    
+    @State private var pulseAnimation = false
+    
+    var body: some View {
+        Button(action: action) {
+            ZStack {
+                // Background circle
+                Circle()
+                    .fill(isRecording ? Color.red : Color.cocPurple)
+                    .frame(width: 80, height: 80)
+                    .scaleEffect(isRecording ? (pulseAnimation ? 1.1 : 1.0) : 1.0)
+                    .animation(.easeInOut(duration: 0.8).repeatForever(autoreverses: true), value: pulseAnimation)
+                
+                // Recording rings
+                if isRecording {
+                    Circle()
+                        .stroke(Color.red.opacity(0.3), lineWidth: 2)
+                        .frame(width: 100, height: 100)
+                        .scaleEffect(pulseAnimation ? 1.3 : 1.0)
+                        .opacity(pulseAnimation ? 0.0 : 1.0)
+                        .animation(.easeOut(duration: 1.5).repeatForever(autoreverses: false), value: pulseAnimation)
+                }
+                
+                // Microphone icon
+                Text("🎤")
+                    .font(.system(size: 32))
+            }
+        }
+        .disabled(!hasPermission)
+        .opacity(hasPermission ? 1.0 : 0.5)
+        .onAppear {
+            if isRecording {
+                pulseAnimation = true
+            }
+        }
+        .onChange(of: isRecording) { _, newValue in
+            pulseAnimation = newValue
+        }
+    }
+}
+
+// MARK: - Waveform Visualization
+struct WaveformVisualizationView: View {
+    let audioLevels: [Float]
+    let isAnimating: Bool
+    
+    var body: some View {
+        HStack(spacing: 2) {
+            ForEach(Array(audioLevels.enumerated()), id: \.offset) { index, level in
+                RoundedRectangle(cornerRadius: 1)
+                    .fill(Color.cocPurple)
+                    .frame(width: 3, height: max(4, CGFloat(level) * 60))
+                    .animation(.easeInOut(duration: 0.1), value: level)
             }
         }
     }
@@ -367,6 +914,7 @@ struct DestinationCardView: View {
 struct CulturalCardView: View {
     let card: CulturalCard
     let index: Int
+    let onTap: () -> Void
     @State private var isPressed = false
     
     // Random card height for staggered effect (PPnotes style)
@@ -482,7 +1030,8 @@ struct CulturalCardView: View {
                 }
             }
             
-            // TODO: Handle card tap action
+            // Call the tap action
+            onTap()
         }
     }
 }
@@ -490,6 +1039,7 @@ struct CulturalCardView: View {
 // MARK: - Staggered Grid Layout
 struct StaggeredCulturalCardsGrid: View {
     let cards: [CulturalCard]
+    let onCardTap: (CulturalCard) -> Void
     
     var body: some View {
         GeometryReader { geometry in
@@ -500,12 +1050,14 @@ struct StaggeredCulturalCardsGrid: View {
                 // Left column
                 LazyVStack(spacing: 16) {
                     ForEach(Array(leftColumnCards.enumerated()), id: \.element.id) { index, card in
-                        CulturalCardView(card: card, index: leftColumnIndex(for: index))
-                            .transition(.asymmetric(
-                                insertion: .scale.combined(with: .opacity),
-                                removal: .scale.combined(with: .opacity)
-                            ))
-                            .animation(.spring(response: 1.0, dampingFraction: 0.8).delay(Double(index) * 0.1), value: cards.count)
+                        CulturalCardView(card: card, index: leftColumnIndex(for: index), onTap: {
+                            onCardTap(card)
+                        })
+                        .transition(.asymmetric(
+                            insertion: .scale.combined(with: .opacity),
+                            removal: .scale.combined(with: .opacity)
+                        ))
+                        .animation(.spring(response: 1.0, dampingFraction: 0.8).delay(Double(index) * 0.1), value: cards.count)
                     }
                 }
                 .frame(width: columnWidth)
@@ -513,12 +1065,14 @@ struct StaggeredCulturalCardsGrid: View {
                 // Right column
                 LazyVStack(spacing: 16) {
                     ForEach(Array(rightColumnCards.enumerated()), id: \.element.id) { index, card in
-                        CulturalCardView(card: card, index: rightColumnIndex(for: index))
-                            .transition(.asymmetric(
-                                insertion: .scale.combined(with: .opacity),
-                                removal: .scale.combined(with: .opacity)
-                            ))
-                            .animation(.spring(response: 1.0, dampingFraction: 0.8).delay(Double(index) * 0.1), value: cards.count)
+                        CulturalCardView(card: card, index: rightColumnIndex(for: index), onTap: {
+                            onCardTap(card)
+                        })
+                        .transition(.asymmetric(
+                            insertion: .scale.combined(with: .opacity),
+                            removal: .scale.combined(with: .opacity)
+                        ))
+                        .animation(.spring(response: 1.0, dampingFraction: 0.8).delay(Double(index) * 0.1), value: cards.count)
                     }
                 }
                 .frame(width: columnWidth)
@@ -570,6 +1124,150 @@ struct StaggeredCulturalCardsGrid: View {
     private func getCardHeight(for index: Int) -> CGFloat {
         let heights: [CGFloat] = [140, 150, 145, 160, 155, 145, 165, 135, 150]
         return heights[index % heights.count]
+    }
+}
+
+// MARK: - Cultural Card Detail View
+struct CulturalCardDetailView: View {
+    let card: CulturalCard
+    let destination: Destination
+    let onBack: () -> Void
+    @State private var isVisible = false
+    
+    var body: some View {
+        ZStack {
+            // Background overlay
+            Color.black.opacity(0.3)
+                .ignoresSafeArea()
+                .onTapGesture {
+                    onBack()
+                }
+            
+            // Card Detail Content (PPnotes style)
+            ScrollView {
+                VStack(alignment: .leading, spacing: 0) {
+                    // Header section (PPnotes style)
+                    VStack(alignment: .leading, spacing: 16) {
+
+                        
+                        // Cultural card header
+                        HStack {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Cultural Insight")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                    .fontWeight(.medium)
+                                
+                                Text(destination.name)
+                                    .font(.caption2)
+                                    .foregroundColor(.secondary)
+                            }
+                            
+                            Spacer()
+                            
+                            // Category emoji
+                            Text(card.type.emoji)
+                                .font(.system(size: 32))
+                        }
+                        .padding(.top, 8)
+                    }
+                    .padding(.horizontal, 24)
+                    
+                    // Card content (PPnotes note style)
+                    VStack(alignment: .leading, spacing: 24) {
+                        // Title section
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text(card.type.title)
+                                .font(.title)
+                                .fontWeight(.bold)
+                                .foregroundColor(.primary)
+                            
+                            Text(card.type.description)
+                                .font(.subheadline)
+                                .foregroundColor(.cocPurple)
+                                .fontWeight(.medium)
+                        }
+                        
+                        // Main content
+                        VStack(alignment: .leading, spacing: 16) {
+                            Text("Cultural Knowledge")
+                                .font(.headline)
+                                .fontWeight(.semibold)
+                                .foregroundColor(.primary)
+                            
+                            Text(card.content)
+                                .font(.body)
+                                .foregroundColor(.primary)
+                                .lineSpacing(6)
+                                .multilineTextAlignment(.leading)
+                        }
+                        
+                        // Additional insights section
+                        VStack(alignment: .leading, spacing: 12) {
+                            Text("Key Insights")
+                                .font(.headline)
+                                .fontWeight(.semibold)
+                                .foregroundColor(.primary)
+                            
+                            VStack(alignment: .leading, spacing: 8) {
+                                InsightRow(icon: "💡", text: "Understanding this cultural practice helps build rapport with local colleagues")
+                                InsightRow(icon: "🤝", text: "Shows respect for traditional business customs")
+                                InsightRow(icon: "📈", text: "Can improve business relationship outcomes")
+                            }
+                        }
+                        
+                        // Context section
+                        VStack(alignment: .leading, spacing: 12) {
+                            Text("Cultural Context")
+                                .font(.headline)
+                                .fontWeight(.semibold)
+                                .foregroundColor(.primary)
+                            
+                            Text("This practice is deeply rooted in \(destination.name)'s cultural values and has been maintained across generations of business professionals.")
+                                .font(.callout)
+                                .foregroundColor(.secondary)
+                                .lineSpacing(4)
+                        }
+                    }
+                    .padding(.horizontal, 24)
+                    .padding(.top, 24)
+                    .padding(.bottom, 40)
+                }
+            }
+            .background {
+                RoundedRectangle(cornerRadius: 20)
+                    .fill(Color(.systemBackground))
+                    .shadow(color: .black.opacity(0.2), radius: 20, x: 0, y: 10)
+            }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 60)
+            .scaleEffect(isVisible ? 1.0 : 0.1)
+            .opacity(isVisible ? 1.0 : 0.0)
+            .animation(.spring(response: 0.6, dampingFraction: 0.8), value: isVisible)
+        }
+        .onAppear {
+            isVisible = true
+        }
+    }
+}
+
+// MARK: - Insight Row Component
+struct InsightRow: View {
+    let icon: String
+    let text: String
+    
+    var body: some View {
+        HStack(alignment: .top, spacing: 12) {
+            Text(icon)
+                .font(.body)
+            
+            Text(text)
+                .font(.callout)
+                .foregroundColor(.secondary)
+                .multilineTextAlignment(.leading)
+            
+            Spacer()
+        }
     }
 }
 

@@ -44,10 +44,42 @@ struct CulturalCard: Identifiable, Codable {
     var content: String
     var dateAdded: Date
     
+    // AI-Generated Card Properties
+    var category: CulturalCategory?
+    var insight: String?
+    var practicalTips: [String]?
+    var isAIGenerated: Bool
+    var destination: String?
+    
+    // Traditional card initializer
     init(type: CardType, title: String, content: String) {
         self.type = type
         self.title = title
         self.content = content
+        self.dateAdded = Date()
+        self.isAIGenerated = false
+        self.category = nil
+        self.insight = nil
+        self.practicalTips = nil
+        self.destination = nil
+    }
+    
+    // AI-Generated card initializer
+    init(
+        title: String,
+        category: CulturalCategory,
+        insight: String,
+        practicalTips: [String],
+        destination: String
+    ) {
+        self.type = category.cardType
+        self.title = title
+        self.content = insight // Use insight as primary content
+        self.category = category
+        self.insight = insight
+        self.practicalTips = practicalTips
+        self.isAIGenerated = true
+        self.destination = destination
         self.dateAdded = Date()
     }
 }
@@ -109,6 +141,60 @@ enum CardType: String, CaseIterable, Codable {
             return "Appropriate gifts, presentation, occasions"
         case .quickFacts:
             return "Key phrases, important numbers, cultural notes"
+        }
+    }
+}
+
+// MARK: - Cultural Category Enum (for AI-Generated Cards)
+enum CulturalCategory: String, CaseIterable, Codable {
+    case businessEtiquette = "Business Etiquette & Meeting Protocols"
+    case socialCustoms = "Social Customs & Relationship Building"
+    case communication = "Communication Styles & Non-verbal Cues"
+    case giftGiving = "Gift Giving & Entertainment"
+    case diningCulture = "Dining Etiquette & Food Culture"
+    case timeManagement = "Time Management & Scheduling"
+    case hierarchy = "Hierarchy & Decision Making"
+    case greetingCustoms = "Greeting Customs & Personal Space"
+    
+    var title: String {
+        return self.rawValue
+    }
+    
+    var emoji: String {
+        switch self {
+        case .businessEtiquette:
+            return "💼"
+        case .socialCustoms:
+            return "🤝"
+        case .communication:
+            return "💬"
+        case .giftGiving:
+            return "🎁"
+        case .diningCulture:
+            return "🍽️"
+        case .timeManagement:
+            return "⏰"
+        case .hierarchy:
+            return "👔"
+        case .greetingCustoms:
+            return "👋"
+        }
+    }
+    
+    var cardType: CardType {
+        switch self {
+        case .businessEtiquette, .hierarchy:
+            return .businessEtiquette
+        case .socialCustoms, .greetingCustoms:
+            return .socialCustoms
+        case .communication:
+            return .communication
+        case .giftGiving:
+            return .giftGiving
+        case .diningCulture:
+            return .diningCulture
+        case .timeManagement:
+            return .quickFacts
         }
     }
 }
