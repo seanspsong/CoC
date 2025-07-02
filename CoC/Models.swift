@@ -65,6 +65,7 @@ struct CulturalCard: Identifiable, Codable {
     var nameCard: String?           // Section 1: One word/name (big bold)
     var keyKnowledge: [String]?     // Section 2: Key Knowledge (bullet points)
     var culturalInsights: String?   // Section 3: Cultural Insights (text paragraph)
+    var question: String?           // Original user question that generated this card
     var isAIGenerated: Bool
     var destination: String?
     
@@ -75,7 +76,7 @@ struct CulturalCard: Identifiable, Codable {
     // Custom CodingKeys to exclude id and computed properties from encoding/decoding
     private enum CodingKeys: String, CodingKey {
         case type, title, content, dateAdded
-        case category, nameCard, keyKnowledge, culturalInsights, isAIGenerated, destination
+        case category, nameCard, keyKnowledge, culturalInsights, question, isAIGenerated, destination
     }
     
     // Custom decoder to handle id initialization
@@ -90,6 +91,7 @@ struct CulturalCard: Identifiable, Codable {
         self.nameCard = try container.decodeIfPresent(String.self, forKey: .nameCard)
         self.keyKnowledge = try container.decodeIfPresent([String].self, forKey: .keyKnowledge)
         self.culturalInsights = try container.decodeIfPresent(String.self, forKey: .culturalInsights)
+        self.question = try container.decodeIfPresent(String.self, forKey: .question)
         self.isAIGenerated = try container.decode(Bool.self, forKey: .isAIGenerated)
         self.destination = try container.decodeIfPresent(String.self, forKey: .destination)
     }
@@ -105,6 +107,7 @@ struct CulturalCard: Identifiable, Codable {
         self.nameCard = nil
         self.keyKnowledge = nil
         self.culturalInsights = nil
+        self.question = nil
         self.destination = nil
     }
     
@@ -115,7 +118,8 @@ struct CulturalCard: Identifiable, Codable {
         nameCard: String,
         keyKnowledge: [String],
         culturalInsights: String,
-        destination: String
+        destination: String,
+        question: String? = nil
     ) {
         self.type = category.cardType
         self.title = title
@@ -124,6 +128,7 @@ struct CulturalCard: Identifiable, Codable {
         self.nameCard = nameCard
         self.keyKnowledge = keyKnowledge
         self.culturalInsights = culturalInsights
+        self.question = question
         self.isAIGenerated = true
         self.destination = destination
         self.dateAdded = Date()

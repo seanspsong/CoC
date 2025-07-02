@@ -84,7 +84,7 @@ class AICardGenerator: ObservableObject {
             print("🔍 [AICardGenerator] Converting structured response to CulturalCard...")
             
             // Convert structured response to cultural card
-            let card = convertToCulturalCard(response: response, destination: destination)
+            let card = convertToCulturalCard(response: response, destination: destination, question: userQuery)
             
             generationProgress = "Complete!"
             print("✅ [AICardGenerator] Cultural card generated successfully!")
@@ -207,7 +207,7 @@ class AICardGenerator: ObservableObject {
     }
     
     // MARK: - Response Conversion
-    private func convertToCulturalCard(response: CulturalInsightResponse, destination: String) -> CulturalCard {
+    private func convertToCulturalCard(response: CulturalInsightResponse, destination: String, question: String) -> CulturalCard {
         print("🔄 [AICardGenerator] Converting structured response to CulturalCard...")
         
         // Map category string to enum
@@ -219,10 +219,20 @@ class AICardGenerator: ObservableObject {
             nameCard: response.nameCard,
             keyKnowledge: response.keyKnowledge,
             culturalInsights: response.culturalInsights,
-            destination: destination
+            destination: destination,
+            question: question
         )
         
         print("✅ [AICardGenerator] Successfully converted to CulturalCard")
+        print("🔍 [AICardGenerator] Final card details:")
+        print("   - Title: '\(card.title)'")
+        print("   - Is AI Generated: \(card.isAIGenerated)")
+        print("   - Name Card: '\(card.nameCard ?? "nil")'")
+        print("   - Key Knowledge: \(card.keyKnowledge?.count ?? 0) items: \(card.keyKnowledge ?? [])")
+        print("   - Cultural Insights: '\(card.culturalInsights ?? "nil")'")
+        print("   - Question: '\(card.question ?? "nil")'")
+        print("   - Content (legacy): '\(card.content.prefix(100))...'")
+        print("   - Category: \(card.category?.title ?? "nil")")
         print("📋 [AICardGenerator] Card Structure:")
         print("   - Name Card: '\(response.nameCard)'")
         print("   - Key Knowledge: \(response.keyKnowledge.count) points")
@@ -233,11 +243,23 @@ class AICardGenerator: ObservableObject {
     // MARK: - Mock Response Fallback
     private func parseMockResponseToStructured(_ mockResponse: String) throws -> CulturalInsightResponse {
         print("🔧 [AICardGenerator] Parsing mock response to structured format...")
+        print("📝 [AICardGenerator] Mock response content:")
+        print("--- MOCK RESPONSE START ---")
+        print(mockResponse)
+        print("--- MOCK RESPONSE END ---")
         
         // Try to parse JSON response from mock
         if let jsonData = mockResponse.data(using: .utf8) {
             do {
                 let parsed = try JSONDecoder().decode(AIResponse.self, from: jsonData)
+                
+                print("✅ [AICardGenerator] Successfully parsed mock JSON response!")
+                print("📋 [AICardGenerator] Parsed data:")
+                print("   - Title: '\(parsed.title)'")
+                print("   - Category: '\(parsed.category)'")
+                print("   - Name Card: '\(parsed.nameCard ?? "nil")'")
+                print("   - Key Knowledge: \(parsed.keyKnowledge?.count ?? 0) items")
+                print("   - Cultural Insights: \(parsed.culturalInsights?.count ?? 0) chars")
                 
                 return CulturalInsightResponse(
                     title: parsed.title,
@@ -247,27 +269,35 @@ class AICardGenerator: ObservableObject {
                     culturalInsights: parsed.culturalInsights ?? parsed.insight
                 )
             } catch {
-                print("⚠️ [AICardGenerator] JSON parsing failed, using fallback structure")
+                print("❌ [AICardGenerator] JSON parsing failed with error: \(error)")
+                print("🔍 [AICardGenerator] JSON Data Length: \(jsonData.count) bytes")
+                print("🔄 [AICardGenerator] Attempting manual content extraction...")
+                
+                // Manual parsing fallback - extract content from JSON string
+                return extractContentFromJSONString(mockResponse)
             }
         }
         
-        // Fallback: create basic structured response
+        print("❌ [AICardGenerator] Could not convert mock response to JSON data")
+        print("🔄 [AICardGenerator] Using raw content as cultural insights")
+        
+        // Final fallback - use the raw response as cultural insights
         return CulturalInsightResponse(
-            title: "Cultural Insight",
-            category: "Social Customs",
+            title: "Cultural Business Insight",
+            category: "Social Customs & Relationship Building",
             nameCard: "Culture",
             keyKnowledge: [
-                "👀 Follow local customs and observe before acting",
-                "❓ Ask for guidance when unsure about protocols",
-                "🙏 Show respect for cultural traditions and practices",
-                "⏳ Be patient and flexible in your approach"
+                "📚 Research local customs before important interactions",
+                "❤️ Show genuine interest in cultural traditions",
+                "🚫 Avoid assumptions based on stereotypes",
+                "👀 Pay attention to subtle social cues"
             ],
             culturalInsights: mockResponse
         )
     }
     
     // MARK: - Legacy Response Parsing (for compatibility)
-    private func parseToCulturalCard(response: String, destination: String) throws -> CulturalCard {
+    private func parseToCulturalCard(response: String, destination: String, question: String) throws -> CulturalCard {
         print("🔧 [AICardGenerator] Parsing AI response to CulturalCard...")
         
         // Try to parse JSON response
@@ -295,7 +325,8 @@ class AICardGenerator: ObservableObject {
                     nameCard: parsed.nameCard ?? extractNameCard(from: parsed.title),
                     keyKnowledge: parsed.keyKnowledge ?? parsed.practicalTips,
                     culturalInsights: parsed.culturalInsights ?? parsed.insight,
-                    destination: destination
+                    destination: destination,
+                    question: question
                 )
                 
                 print("✅ [AICardGenerator] CulturalCard created successfully!")
@@ -305,12 +336,101 @@ class AICardGenerator: ObservableObject {
                 print("❌ [AICardGenerator] JSON parsing failed: \(error)")
                 print("🔄 [AICardGenerator] Falling back to manual parsing...")
                 // If JSON parsing fails, try to extract content manually
-                return try parseManualResponse(response: response, destination: destination)
+                return try parseManualResponse(response: response, destination: destination, question: question)
             }
         }
         
         print("❌ [AICardGenerator] Could not convert response to JSON data")
         throw AIGenerationError.invalidResponse
+    }
+    
+    // MARK: - Manual Content Extraction
+    private func extractContentFromJSONString(_ jsonString: String) -> CulturalInsightResponse {
+        print("🔧 [AICardGenerator] Extracting content manually from JSON string...")
+        
+        // Extract title
+        let title = extractValue(from: jsonString, key: "title") ?? "Cultural Business Insight"
+        
+        // Extract category
+        let category = extractValue(from: jsonString, key: "category") ?? "Social Customs & Relationship Building"
+        
+        // Extract name card
+        let nameCard = extractValue(from: jsonString, key: "nameCard") ?? "Culture"
+        
+        // Extract cultural insights
+        let culturalInsights = extractValue(from: jsonString, key: "culturalInsights") ?? 
+                              extractValue(from: jsonString, key: "insight") ?? 
+                              "Understanding cultural nuances requires attention to both explicit customs and subtle social cues. Building relationships based on mutual respect and cultural awareness shows professionalism and leads to successful partnerships."
+        
+        // Extract key knowledge array
+        let keyKnowledge = extractArrayValues(from: jsonString, key: "keyKnowledge") ?? 
+                          extractArrayValues(from: jsonString, key: "practicalTips") ?? [
+            "📚 Research local customs before important interactions",
+            "❤️ Show genuine interest in cultural traditions",
+            "🚫 Avoid assumptions based on stereotypes",
+            "👀 Pay attention to subtle social cues"
+        ]
+        
+        print("✅ [AICardGenerator] Manual extraction completed!")
+        print("📋 [AICardGenerator] Extracted content:")
+        print("   - Title: '\(title)'")
+        print("   - Category: '\(category)'")
+        print("   - Name Card: '\(nameCard)'")
+        print("   - Key Knowledge: \(keyKnowledge.count) items")
+        print("   - Cultural Insights: \(culturalInsights.count) characters")
+        
+        return CulturalInsightResponse(
+            title: title,
+            category: category,
+            nameCard: nameCard,
+            keyKnowledge: keyKnowledge,
+            culturalInsights: culturalInsights
+        )
+    }
+    
+    private func extractValue(from jsonString: String, key: String) -> String? {
+        // Extract string value from JSON using regex
+        let pattern = "\"" + key + "\"\\s*:\\s*\"([^\"]*)\""
+        if let regex = try? NSRegularExpression(pattern: pattern, options: []),
+           let match = regex.firstMatch(in: jsonString, options: [], range: NSRange(location: 0, length: jsonString.count)),
+           let range = Range(match.range(at: 1), in: jsonString) {
+            return String(jsonString[range])
+        }
+        return nil
+    }
+    
+    private func extractArrayValues(from jsonString: String, key: String) -> [String]? {
+        // Extract array of strings from JSON - handle multiline arrays properly
+        let pattern = "\"" + key + "\"\\s*:\\s*\\[([^\\]]+)\\]"
+        if let regex = try? NSRegularExpression(pattern: pattern, options: [.dotMatchesLineSeparators]),
+           let match = regex.firstMatch(in: jsonString, options: [], range: NSRange(location: 0, length: jsonString.count)),
+           let range = Range(match.range(at: 1), in: jsonString) {
+            
+            let arrayContent = String(jsonString[range])
+            print("🔍 [AICardGenerator] Raw array content: '\(arrayContent)'")
+            
+            // More robust parsing - split by quotes and commas
+            var items: [String] = []
+            let scanner = Scanner(string: arrayContent)
+            
+            while !scanner.isAtEnd {
+                scanner.scanUpToString("\"")
+                if scanner.scanString("\"") != nil {
+                    if let item = scanner.scanUpToString("\"") {
+                        let cleanedItem = item.trimmingCharacters(in: .whitespacesAndNewlines)
+                        if !cleanedItem.isEmpty {
+                            items.append(cleanedItem)
+                        }
+                    }
+                    scanner.scanString("\"")
+                }
+                scanner.scanUpToString("\"")
+            }
+            
+            print("🔍 [AICardGenerator] Extracted array items: \(items)")
+            return items.isEmpty ? nil : items
+        }
+        return nil
     }
     
     // MARK: - Helper Functions
@@ -389,7 +509,7 @@ class AICardGenerator: ObservableObject {
         }
     }
     
-    private func parseManualResponse(response: String, destination: String) throws -> CulturalCard {
+    private func parseManualResponse(response: String, destination: String, question: String) throws -> CulturalCard {
         print("🛠️ [AICardGenerator] Using manual parsing fallback...")
         print("📝 [AICardGenerator] Creating basic CulturalCard from raw response")
         
@@ -400,7 +520,8 @@ class AICardGenerator: ObservableObject {
             nameCard: "Culture",
             keyKnowledge: ["👀 Follow local customs", "🙏 Be respectful", "📝 Observe before acting", "❓ Ask for guidance when unsure"],
             culturalInsights: response,
-            destination: destination
+            destination: destination,
+            question: question
         )
         
         print("✅ [AICardGenerator] Manual parsing completed!")

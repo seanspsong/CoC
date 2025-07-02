@@ -14,7 +14,7 @@ extension Color {
 
 struct ContentView: View {
     @State private var showingSettings = false
-    @State private var destinations: [Destination] = []
+    @StateObject private var dataManager = DataManager()
     @State private var selectedDestination: Destination?
     @State private var selectedCard: CulturalCard?
     @State private var showingVoiceRecording = false
@@ -26,13 +26,38 @@ struct ContentView: View {
             ZStack {
                 // Main Content (Full Screen)
                 if let selectedCard = selectedCard, let selectedDestination = selectedDestination {
-                    // Cultural Card Detail View
-                    CulturalCardDetailView(
-                        card: selectedCard,
-                        destination: selectedDestination
-                    ) {
-                        withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) {
-                            self.selectedCard = nil
+                    // Show appropriate view based on card type
+                    ZStack {
+                        // Background overlay
+                        Color.black.opacity(0.3)
+                            .ignoresSafeArea()
+                            .onTapGesture {
+                                withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) {
+                                    self.selectedCard = nil
+                                }
+                            }
+                        
+                        // Choose view based on whether card is AI-generated
+                        if selectedCard.isAIGenerated {
+                            // Use AI-generated card view for structured content
+                            GeneratedCardContentView(card: selectedCard, destination: selectedDestination)
+                                .background {
+                                    RoundedRectangle(cornerRadius: 20)
+                                        .fill(Color(.systemBackground))
+                                        .shadow(color: .black.opacity(0.2), radius: 20, x: 0, y: 10)
+                                }
+                                .padding(.horizontal, 20)
+                                .padding(.vertical, 60)
+                        } else {
+                            // Use traditional card view for legacy content
+                            CulturalCardDetailView(
+                                card: selectedCard,
+                                destination: selectedDestination
+                            ) {
+                                withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) {
+                                    self.selectedCard = nil
+                                }
+                            }
                         }
                     }
                     .transition(.asymmetric(
@@ -55,10 +80,11 @@ struct ContentView: View {
                         showingVoiceRecording = false
                     }
                     .zIndex(1)
-                } else if let selectedDestination = selectedDestination {
-                    // Destination Detail View
+                } else if let selectedDestination = selectedDestination,
+                          let currentDestination = dataManager.destinations.first(where: { $0.id == selectedDestination.id }) {
+                    // Destination Detail View (always use current data from DataManager)
                     DestinationDetailView(
-                        destination: selectedDestination,
+                        destination: currentDestination,
                         onCardTap: { card in
                             withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) {
                                 self.selectedCard = card
@@ -72,7 +98,7 @@ struct ContentView: View {
                     }
                 } else {
                     // Destinations Overview
-                    DestinationsOverviewView(destinations: destinations) { destination in
+                    DestinationsOverviewView(destinations: dataManager.destinations) { destination in
                         selectedDestination = destination
                     }
                 }
@@ -109,9 +135,6 @@ struct ContentView: View {
                 }
             }
         }
-        .onAppear {
-            loadSampleData()
-        }
         .sheet(isPresented: $showingSettings) {
             SettingsView()
         }
@@ -129,7 +152,10 @@ struct ContentView: View {
     
     private func addNewDestination() {
         // TODO: Show destination creation sheet
-        print("Adding new destination")
+        // For now, create a sample destination
+        let newDestination = Destination(name: "New Destination", flag: "🌍")
+        dataManager.addDestination(newDestination)
+        print("Added new destination: \(newDestination.name)")
     }
     
     private func addNewCard() {
@@ -140,17 +166,9 @@ struct ContentView: View {
     }
     
     private func addGeneratedCard(_ card: CulturalCard, to destination: Destination) {
-        // Find the destination index and add the card
-        if let index = destinations.firstIndex(where: { $0.id == destination.id }) {
-            destinations[index].addCard(card)
-        }
-    }
-    
-    private func loadSampleData() {
-        // Only load sample data if destinations are empty to avoid duplicates
-        if destinations.isEmpty {
-            destinations = Destination.sampleData
-        }
+        // Use DataManager to add the card and automatically save
+        dataManager.addCard(card, to: destination)
+        // No need to update selectedDestination since the view now gets current data from DataManager
     }
 }
 
@@ -755,6 +773,28 @@ struct GeneratedCardContentView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
+                // Question Section (if available)
+                if let question = card.question, !question.isEmpty {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Your Question")
+                            .font(.caption)
+                            .fontWeight(.medium)
+                            .foregroundColor(.secondary)
+                            .textCase(.uppercase)
+                            .tracking(1.2)
+                        
+                        Text(question)
+                            .font(.body)
+                            .foregroundColor(.primary)
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 12)
+                            .background(Color(.systemGray6))
+                            .cornerRadius(12)
+                    }
+                    .padding(.horizontal, 24)
+                    .padding(.top, 24)
+                }
+                
                 // Content - New 3-Section Structure
                 VStack(alignment: .leading, spacing: 24) {
                     // Section 1: Name Card (Big Bold Font)
@@ -840,7 +880,7 @@ struct GeneratedCardContentView: View {
                     }
                 }
                 .padding(.horizontal, 24)
-                .padding(.top, 24)
+                .padding(.top, card.question != nil && !card.question!.isEmpty ? 8 : 24) // Adjust top padding based on question presence
                 .padding(.bottom, 40) // Increased bottom padding for better scroll experience
             }
         }
@@ -1028,28 +1068,101 @@ struct CulturalCardView: View {
         )
     }
     
+    // Display title: Use Name Card for AI-generated cards, category title for others
+    private var cardDisplayTitle: String {
+        if card.isAIGenerated, let nameCard = card.nameCard, !nameCard.isEmpty {
+            return nameCard
+        } else {
+            return card.type.title
+        }
+    }
+    
+    // Contextual emoji based on card content
+    private var contextualEmoji: String {
+        // For AI-generated cards, determine emoji based on nameCard or title content
+        if card.isAIGenerated {
+            let searchText = (card.nameCard ?? card.title).lowercased()
+            
+            // Company/Brand emojis
+            if searchText.contains("sony") {
+                return "📱"
+            } else if searchText.contains("nintendo") {
+                return "🎮"
+            } else if searchText.contains("toyota") {
+                return "🚗"
+            } else if searchText.contains("yamaha") {
+                return "🎵"
+            } else if searchText.contains("honda") {
+                return "🏍️"
+            } else if searchText.contains("panasonic") {
+                return "🔌"
+            } else if searchText.contains("canon") {
+                return "📷"
+            } else if searchText.contains("mitsubishi") {
+                return "🏢"
+            }
+            
+            // People/Names emojis
+            else if searchText.contains("hiroshi") || searchText.contains("tanaka") {
+                return "👨‍💼"
+            } else if searchText.contains("fusajiro") || searchText.contains("yamauchi") {
+                return "🎯"
+            } else if searchText.contains("masuda") {
+                return "🎼"
+            } else if searchText.contains("ibuka") || searchText.contains("morita") {
+                return "💡"
+            }
+            
+            // Places/Landmarks emojis
+            else if searchText.contains("fuji") || searchText.contains("mount") {
+                return "🗻"
+            } else if searchText.contains("tokyo") {
+                return "🏙️"
+            } else if searchText.contains("kyoto") {
+                return "⛩️"
+            } else if searchText.contains("osaka") {
+                return "🍜"
+            } else if searchText.contains("temple") {
+                return "🏛️"
+            } else if searchText.contains("shrine") {
+                return "⛩️"
+            }
+            
+            // Business/Cultural concept emojis
+            else if searchText.contains("founder") || searchText.contains("ceo") {
+                return "👔"
+            } else if searchText.contains("innovation") || searchText.contains("technology") {
+                return "💡"
+            } else if searchText.contains("culture") || searchText.contains("tradition") {
+                return "🎌"
+            } else if searchText.contains("business") || searchText.contains("meeting") {
+                return "💼"
+            } else if searchText.contains("dining") || searchText.contains("food") {
+                return "🍽️"
+            } else if searchText.contains("greeting") || searchText.contains("bow") {
+                return "🙇‍♂️"
+            }
+            
+            // Default for AI-generated cards
+            else {
+                return "🎌"
+            }
+        } else {
+            // For manual cards, use category emoji
+            return card.type.emoji
+        }
+    }
+    
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            // Header with timestamp-style date (PPnotes uniform style)
-            HStack {
-                Spacer()
-                VStack(alignment: .trailing, spacing: 2) {
-                    Text("Cultural")
-                        .font(.caption2)
-                        .foregroundColor(.secondary)
-                        .fontWeight(.medium)
-                    
-                    Text("Insight")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                }
-            }
-            .padding(.horizontal, 16)
-            .padding(.top, 12)
+            // Empty spacer for consistent layout
+            Spacer()
+                .frame(height: 12)
             
             // Title section (PPnotes uniform style)
             HStack {
-                Text(card.type.title)
+                // Use Name Card for AI-generated cards, otherwise use category title
+                Text(cardDisplayTitle)
                     .font(.headline)
                     .fontWeight(.semibold)
                     .lineLimit(2)
@@ -1057,8 +1170,8 @@ struct CulturalCardView: View {
                 
                 Spacer()
                 
-                // Category emoji
-                Text(card.type.emoji)
+                // Contextual emoji based on card content
+                Text(contextualEmoji)
                     .font(.system(size: 18))
             }
             .padding(.horizontal, 16)
