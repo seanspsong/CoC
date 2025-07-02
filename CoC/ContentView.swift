@@ -783,14 +783,15 @@ struct EmptyCardWithMicrophoneView: View {
 struct GeneratedCardContentView: View {
     let card: CulturalCard
     let destination: Destination
+    @State private var isExpanded = false
     
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                // Question Section (if available)
+            VStack(alignment: .leading, spacing: 24) {
+                // YOUR QUESTION Section
                 if let question = card.question, !question.isEmpty {
                     VStack(alignment: .leading, spacing: 8) {
-                        Text("Your Question")
+                        Text("YOUR QUESTION")
                             .font(.caption)
                             .fontWeight(.medium)
                             .foregroundColor(.secondary)
@@ -805,100 +806,125 @@ struct GeneratedCardContentView: View {
                             .background(Color(.systemGray6))
                             .cornerRadius(12)
                     }
-                    .padding(.horizontal, 24)
-                    .padding(.top, 24)
                 }
                 
-                // Content - New 3-Section Structure
-                VStack(alignment: .leading, spacing: 24) {
-                    // Section 1: Name Card (Big Bold Font)
-                    if let nameCard = card.nameCard {
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("Name Card")
-                                .font(.caption)
-                                .fontWeight(.medium)
-                                .foregroundColor(.secondary)
-                                .textCase(.uppercase)
-                                .tracking(1.2)
-                            
-                            Text(nameCard)
-                                .font(.largeTitle)
-                                .fontWeight(.bold)
-                                .foregroundColor(.primary)
-                        }
+                // NAME CARD Section
+                if let nameCard = card.nameCard {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("NAME CARD")
+                            .font(.caption)
+                            .fontWeight(.medium)
+                            .foregroundColor(.secondary)
+                            .textCase(.uppercase)
+                            .tracking(1.2)
+                        
+                        Text(nameCard)
+                            .font(.system(size: 32, weight: .bold, design: .default))
+                            .foregroundColor(.primary)
                     }
-                    
-                    // Section 2: Key Knowledge (Bullet Points)
-                    if let keyKnowledge = card.keyKnowledge, !keyKnowledge.isEmpty {
-                        VStack(alignment: .leading, spacing: 12) {
-                            Text("Key Knowledge")
-                                .font(.headline)
-                                .fontWeight(.semibold)
-                                .foregroundColor(.cocPurple)
-                            
-                            ForEach(keyKnowledge, id: \.self) { knowledge in
-                                HStack(alignment: .top, spacing: 8) {
-                                    Text(knowledge)
-                                        .font(.subheadline)
-                                        .multilineTextAlignment(.leading)
-                                    Spacer()
-                                }
+                }
+                
+                // Key Knowledge Section
+                if let keyKnowledge = card.keyKnowledge, !keyKnowledge.isEmpty {
+                    VStack(alignment: .leading, spacing: 16) {
+                        Text("Key Knowledge")
+                            .font(.title2)
+                            .fontWeight(.semibold)
+                            .foregroundColor(.cocPurple)
+                        
+                        ForEach(keyKnowledge, id: \.self) { knowledge in
+                            HStack(alignment: .top, spacing: 12) {
+                                Text("-")
+                                    .font(.body)
+                                    .fontWeight(.medium)
+                                    .foregroundColor(.cocPurple)
+                                
+                                Text(knowledge)
+                                    .font(.body)
+                                    .multilineTextAlignment(.leading)
+                                    .foregroundColor(.primary)
+                                
+                                Spacer()
                             }
                         }
+                        
+                        // Expand/Collapse Button at bottom, centered
+                        HStack {
+                            Spacer()
+                            Button(action: {
+                                withAnimation(.easeInOut(duration: 0.3)) {
+                                    isExpanded.toggle()
+                                }
+                            }) {
+                                Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
+                                    .font(.system(size: 16, weight: .medium))
+                                    .foregroundColor(.cocPurple)
+                                    .frame(width: 24, height: 24)
+                                    .background(Color(.systemGray6))
+                                    .clipShape(Circle())
+                            }
+                            Spacer()
+                        }
                     }
-                    
-                    // Section 3: Cultural Insights (Text)
-                    if let culturalInsights = card.culturalInsights {
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("Cultural Insights")
-                                .font(.headline)
-                                .fontWeight(.semibold)
-                                .foregroundColor(.cocPurple)
-                            
-                            Text(culturalInsights)
+                }
+                
+                // Cultural Insights Section (Expandable)
+                if let culturalInsights = card.culturalInsights, isExpanded {
+                    VStack(alignment: .leading, spacing: 16) {
+                        Text("Cultural Insights")
+                            .font(.title2)
+                            .fontWeight(.semibold)
+                            .foregroundColor(.cocPurple)
+                        
+                        Text(culturalInsights)
+                            .font(.body)
+                            .lineSpacing(6)
+                            .multilineTextAlignment(.leading)
+                            .foregroundColor(.primary)
+                    }
+                    .transition(.asymmetric(
+                        insertion: .opacity.combined(with: .move(edge: .top)),
+                        removal: .opacity.combined(with: .move(edge: .top))
+                    ))
+                }
+                
+                // Legacy fallback: Show old format if new format not available
+                if card.nameCard == nil && card.keyKnowledge == nil && card.culturalInsights == nil {
+                    VStack(alignment: .leading, spacing: 16) {
+                        if let insight = card.insight {
+                            Text(insight)
                                 .font(.body)
                                 .lineLimit(nil)
                                 .multilineTextAlignment(.leading)
-                                .foregroundColor(.primary)
                         }
-                    }
-                    
-                    // Legacy fallback: Show old format if new format not available
-                    if card.nameCard == nil && card.keyKnowledge == nil && card.culturalInsights == nil {
-                        VStack(alignment: .leading, spacing: 16) {
-                            if let insight = card.insight {
-                                Text(insight)
-                                    .font(.body)
-                                    .lineLimit(nil)
-                                    .multilineTextAlignment(.leading)
-                            }
-                            
-                            if let tips = card.practicalTips, !tips.isEmpty {
-                                VStack(alignment: .leading, spacing: 8) {
-                                    Text("Practical Tips:")
-                                        .font(.subheadline)
-                                        .fontWeight(.semibold)
-                                        .foregroundColor(.cocPurple)
-                                    
-                                    ForEach(tips, id: \.self) { tip in
-                                        HStack(alignment: .top, spacing: 8) {
-                                            Text(tip)
-                                                .font(.caption)
-                                                .multilineTextAlignment(.leading)
-                                            Spacer()
-                                        }
+                        
+                        if let tips = card.practicalTips, !tips.isEmpty {
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text("Practical Tips:")
+                                    .font(.subheadline)
+                                    .fontWeight(.semibold)
+                                    .foregroundColor(.cocPurple)
+                                
+                                ForEach(tips, id: \.self) { tip in
+                                    HStack(alignment: .top, spacing: 8) {
+                                        Text(tip)
+                                            .font(.caption)
+                                            .multilineTextAlignment(.leading)
+                                        Spacer()
                                     }
                                 }
                             }
                         }
                     }
                 }
-                .padding(.horizontal, 24)
-                .padding(.top, card.question != nil && !card.question!.isEmpty ? 8 : 24) // Adjust top padding based on question presence
-                .padding(.bottom, 40) // Increased bottom padding for better scroll experience
             }
+            .padding(.horizontal, 24)
+            .padding(.vertical, 24)
         }
-        .scrollIndicators(.hidden) // Hide scroll indicators for cleaner look
+        .scrollIndicators(.hidden)
+        .frame(maxHeight: UIScreen.main.bounds.height * 0.9)
+        .fixedSize(horizontal: false, vertical: true)
+        .clipShape(RoundedRectangle(cornerRadius: 16))
     }
 }
 
