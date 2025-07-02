@@ -594,7 +594,7 @@ struct EmptyCardWithMicrophoneView: View {
     @Binding var waveformTrigger: Bool
     
     var body: some View {
-        VStack(spacing: 24) {
+        VStack(spacing: 0) {
             // Header
             VStack(spacing: 8) {
                 Text("Cultural Insight")
@@ -604,13 +604,13 @@ struct EmptyCardWithMicrophoneView: View {
                     .tracking(1)
                 
                 HStack {
-                    VStack(alignment: .leading, spacing: 4) {
+                    HStack(spacing: 8) {
                         Text("Ask about \(destination.name)")
                             .font(.headline)
                             .fontWeight(.semibold)
                         
                         Text(destination.flag)
-                            .font(.system(size: 32))
+                            .font(.system(size: 24))
                     }
                     Spacer()
                 }
@@ -618,7 +618,9 @@ struct EmptyCardWithMicrophoneView: View {
             .padding(.horizontal, 24)
             .padding(.top, 24)
             
-            // Recording Interface
+            Spacer()
+            
+            // Recording Interface Content
             VStack(spacing: 20) {
                 if recordingState == .recording {
                     // Live transcribed text display
@@ -688,25 +690,6 @@ struct EmptyCardWithMicrophoneView: View {
                             .foregroundColor(.cocPurple)
                             .fontWeight(.medium)
                     }
-                    
-                    // Stop Recording Button
-                    Button(action: {
-                        voiceRecorder.stopRecording()
-                        recordingState = .processing
-                    }) {
-                        HStack(spacing: 8) {
-                            Text("⏹")
-                                .font(.system(size: 18))
-                            Text("Stop Recording")
-                                .font(.subheadline)
-                                .fontWeight(.medium)
-                        }
-                        .foregroundColor(.white)
-                        .padding(.horizontal, 24)
-                        .padding(.vertical, 12)
-                        .background(Color.red)
-                        .clipShape(Capsule())
-                    }
                 } else if recordingState == .processing {
                     // AI generation progress
                     VStack(spacing: 12) {
@@ -729,33 +712,38 @@ struct EmptyCardWithMicrophoneView: View {
                             .multilineTextAlignment(.center)
                     }
                 } else {
-                    // Ready state - show microphone
-                    VStack(spacing: 16) {
-                        MicrophoneButton(
-                            isRecording: voiceRecorder.isRecording,
-                            hasPermission: voiceRecorder.hasPermission
-                        ) {
-                            if voiceRecorder.isRecording {
-                                voiceRecorder.stopRecording()
-                                recordingState = .processing
-                            } else {
-                                voiceRecorder.startRecording()
-                                recordingState = .recording
-                            }
+                    // Ready state instruction
+                    Text(recordingState == .recording ? "Tap mic to stop recording" : "Tap to ask about \(destination.name) culture")
+                        .font(.subheadline)
+                        .foregroundColor(recordingState == .recording ? .cocPurple : .secondary)
+                        .multilineTextAlignment(.center)
+                }
+            }
+            .frame(minHeight: recordingState == .recording ? 180 : 60)
+            
+            Spacer()
+            
+            // Bottom Action Button
+            VStack(spacing: 16) {
+                if recordingState == .ready || recordingState == .recording {
+                    // Microphone Button (handles both start and stop)
+                    MicrophoneButton(
+                        isRecording: voiceRecorder.isRecording,
+                        hasPermission: voiceRecorder.hasPermission
+                    ) {
+                        if voiceRecorder.isRecording {
+                            voiceRecorder.stopRecording()
+                            recordingState = .processing
+                        } else {
+                            voiceRecorder.startRecording()
+                            recordingState = .recording
                         }
-                        
-                        Text(voiceRecorder.isRecording ? "Tap to stop recording" : "Tap to ask about \(destination.name) culture")
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                            .multilineTextAlignment(.center)
                     }
                 }
             }
-            .frame(minHeight: recordingState == .recording ? 200 : 120)
-            
-            Spacer(minLength: recordingState == .recording ? 10 : 0)
+            .padding(.bottom, 30)
         }
-        .frame(minHeight: recordingState == .recording ? 400 : 300)
+        .frame(minHeight: 400)
     }
 }
 
@@ -848,7 +836,7 @@ struct MicrophoneButton: View {
             ZStack {
                 // Background circle
                 Circle()
-                    .fill(isRecording ? Color.red : Color.cocPurple)
+                    .fill(Color.cocPurple)
                     .frame(width: 80, height: 80)
                     .scaleEffect(isRecording ? (pulseAnimation ? 1.1 : 1.0) : 1.0)
                     .animation(.easeInOut(duration: 0.8).repeatForever(autoreverses: true), value: pulseAnimation)
@@ -856,7 +844,7 @@ struct MicrophoneButton: View {
                 // Recording rings
                 if isRecording {
                     Circle()
-                        .stroke(Color.red.opacity(0.3), lineWidth: 2)
+                        .stroke(Color.cocPurple.opacity(0.3), lineWidth: 2)
                         .frame(width: 100, height: 100)
                         .scaleEffect(pulseAnimation ? 1.3 : 1.0)
                         .opacity(pulseAnimation ? 0.0 : 1.0)
@@ -864,8 +852,9 @@ struct MicrophoneButton: View {
                 }
                 
                 // Icon based on recording state
-                Text(isRecording ? "⏹" : "🎤")
-                    .font(.system(size: isRecording ? 28 : 32))
+                Image(systemName: isRecording ? "stop.fill" : "mic.fill")
+                    .font(.system(size: isRecording ? 24 : 28, weight: .medium))
+                    .foregroundColor(.white)
             }
         }
         .disabled(!hasPermission)
