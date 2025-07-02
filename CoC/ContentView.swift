@@ -632,6 +632,25 @@ struct EmptyCardWithMicrophoneView: View {
                     Text("Listening...")
                         .font(.subheadline)
                         .foregroundColor(.secondary)
+                    
+                    // Stop Recording Button
+                    Button(action: {
+                        voiceRecorder.stopRecording()
+                        recordingState = .processing
+                    }) {
+                        HStack(spacing: 8) {
+                            Text("⏹")
+                                .font(.system(size: 18))
+                            Text("Stop Recording")
+                                .font(.subheadline)
+                                .fontWeight(.medium)
+                        }
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 24)
+                        .padding(.vertical, 12)
+                        .background(Color.red)
+                        .clipShape(Capsule())
+                    }
                 } else if recordingState == .processing {
                     // AI generation progress
                     VStack(spacing: 12) {
@@ -669,7 +688,7 @@ struct EmptyCardWithMicrophoneView: View {
                             }
                         }
                         
-                        Text("Tap to ask about \(destination.name) culture")
+                        Text(voiceRecorder.isRecording ? "Tap to stop recording" : "Tap to ask about \(destination.name) culture")
                             .font(.subheadline)
                             .foregroundColor(.secondary)
                             .multilineTextAlignment(.center)
@@ -788,9 +807,9 @@ struct MicrophoneButton: View {
                         .animation(.easeOut(duration: 1.5).repeatForever(autoreverses: false), value: pulseAnimation)
                 }
                 
-                // Microphone icon
-                Text("🎤")
-                    .font(.system(size: 32))
+                // Icon based on recording state
+                Text(isRecording ? "⏹" : "🎤")
+                    .font(.system(size: isRecording ? 28 : 32))
             }
         }
         .disabled(!hasPermission)
