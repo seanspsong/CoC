@@ -6,8 +6,17 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		5A8320362E15287200B80EB8 /* README.md in Resources */ = {isa = PBXBuildFile; fileRef = 5A8320342E15287200B80EB8 /* README.md */; };
+		5A8320372E15287200B80EB8 /* LICENSE in Resources */ = {isa = PBXBuildFile; fileRef = 5A8320332E15287200B80EB8 /* LICENSE */; };
+		5A8320382E15287200B80EB8 /* VibeLog.md in Resources */ = {isa = PBXBuildFile; fileRef = 5A8320352E15287200B80EB8 /* VibeLog.md */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
 		5A08833E2E14FDBB0000082A /* CoC.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CoC.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		5A8320332E15287200B80EB8 /* LICENSE */ = {isa = PBXFileReference; lastKnownFileType = text; path = LICENSE; sourceTree = "<group>"; };
+		5A8320342E15287200B80EB8 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		5A8320352E15287200B80EB8 /* VibeLog.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = VibeLog.md; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -32,6 +41,9 @@
 		5A0883352E14FDBB0000082A = {
 			isa = PBXGroup;
 			children = (
+				5A8320332E15287200B80EB8 /* LICENSE */,
+				5A8320342E15287200B80EB8 /* README.md */,
+				5A8320352E15287200B80EB8 /* VibeLog.md */,
 				5A0883402E14FDBB0000082A /* CoC */,
 				5A08833F2E14FDBB0000082A /* Products */,
 			);
@@ -109,6 +121,9 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				5A8320362E15287200B80EB8 /* README.md in Resources */,
+				5A8320372E15287200B80EB8 /* LICENSE in Resources */,
+				5A8320382E15287200B80EB8 /* VibeLog.md in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
