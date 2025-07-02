@@ -1,133 +1,125 @@
-# Cup of Culture (CoC) 🌍☕
+# Cup of Culture (CoC) 🌍
 
-A cultural learning iOS app designed for international business professionals and travelers to quickly understand destination cultures.
+An iOS application designed to help international business professionals and travelers quickly learn destination cultures through an intuitive, card-based interface.
 
-## Overview
+## Features ✨
 
-Cup of Culture helps users navigate cultural differences by providing essential cultural insights, business etiquette, and local customs for destinations worldwide. Perfect for busy professionals who need quick, actionable cultural knowledge before traveling or conducting international business.
+### 🎨 **Modern Purple Design Theme**
+- Beautiful purple color scheme (#8A2BE2) throughout the app
+- Professional card-based UI with sophisticated shadows and animations
+- Responsive design optimized for all iOS devices
 
-## UI/UX Design
+### 🌍 **Cultural Knowledge System**
+- **Destination Cards**: Elegant card views showcasing countries with flags and cultural information
+- **Cultural Cards**: Six distinct categories of cultural knowledge:
+  - 🤝 Business Etiquette
+  - 🎭 Social Customs  
+  - 🍽️ Dining Culture
+  - 💬 Communication
+  - 🎁 Gift Giving
+  - ⚡ Quick Facts
 
-### Main Interface Structure
+### 🎯 **Intuitive Navigation**
+- Full-screen destination overview with responsive grid layout
+- Floating action buttons (+ for adding content, ⚙️ for settings)
+- Smooth navigation between destinations and cultural details
+- One-tap access to cultural cards with detailed information
 
-**Primary Screen Layout:**
+### 📱 **Sample Content**
+- Pre-loaded with comprehensive cultural data for Japan and Germany
+- Real-world cultural insights and practical business tips
+- Expandable content system for adding more destinations
+
+## Technical Specifications 🛠️
+
+- **Platform**: iOS 17.0+
+- **Framework**: SwiftUI
+- **Architecture**: MVVM (Model-View-ViewModel)
+- **Language**: Swift 5
+- **Design Pattern**: Card-based UI with floating elements
+- **Color Theme**: Purple (#8A2BE2) with modern gradients and shadows
+
+## Project Structure 📁
+
 ```
-┌─────────────────────────────────┐
-│ [🧭] Destinations    Settings [⚙️] │  ← Top Navigation Bar
-├─────────────────────────────────┤
-│                                 │
-│                                 │
-│        Main Content Area        │  ← Cultural Cards Display
-│     (Destination Cards View)    │
-│                                 │
-│                                 │
-├─────────────────────────────────┤
-│                         [+] ←── │  ← Floating Action Button
-└─────────────────────────────────┘
-```
-
-### Navigation Components
-
-**🧭 Top Left - Destinations Context Menu**
-- **Trigger**: Tap destinations button (🧭)
-- **Function**: Shows list of all user-added destinations
-- **UI**: Slide-over or modal list view
-- **Actions**: 
-  - Select destination to view its cultural cards
-  - Quick switch between destinations
-
-**⚙️ Top Right - Settings**
-- **Trigger**: Tap settings button (⚙️)
-- **Function**: App configuration and preferences
-- **UI**: Standard settings modal/navigation
-- **Options**: 
-  - Notifications preferences
-  - Offline data management
-  - Export/backup destinations
-
-**➕ Bottom Floating Action Button**
-- **Position**: Bottom right corner (floating)
-- **Behavior**: Context-aware functionality
-- **States**:
-  - **First-time user**: "Add Your First Destination"
-  - **In main view**: "Add New Destination" 
-  - **Within destination**: "Add Cultural Card"
-
-### User Journey Flow
-
-**1. First-Time User Experience**
-```
-Launch App → Empty State → Tap [+] → Add First Destination → View Destination → Tap [+] → Add First Cultural Card
+CoC/
+├── CoCApp.swift           # App entry point
+├── ContentView.swift      # Main UI implementation
+├── Models.swift          # Data models (Destination, CulturalCard)
+├── Assets.xcassets/      # App icons and assets
+├── VibeLog.md           # Development documentation
+└── README.md            # This file
 ```
 
-**2. Regular User Flow**
-```
-Main View → Select Destination (🧭) → View Cultural Cards → Tap [+] → Add New Card
-     ↳ OR → Tap [+] → Add New Destination
-```
+## Installation & Setup 🚀
 
-**3. Cultural Card Creation**
-```
-Destination View → Tap [+] → Choose Card Type → Fill Content → Save → View in Destination
-```
+1. **Clone the repository:**
+   ```bash
+   git clone https://github.com/seanspsong/CoC.git
+   cd CoC
+   ```
 
-### Content Structure
+2. **Open in Xcode:**
+   ```bash
+   open CoC.xcodeproj
+   ```
 
-**🗺️ Destination**
-- Name & flag/image
-- Collection of cultural knowledge cards
-- Progress indicator (cards added)
-- Last updated timestamp
+3. **Build and Run:**
+   - Select your target device (iPhone/iPad simulator or physical device)
+   - Press `Cmd + R` to build and run
+   - App will automatically load with sample cultural data
 
-**🎴 Cultural Knowledge Card Types**
-- **Business Etiquette**: Meeting protocols, dress codes, punctuality
-- **Social Customs**: Greetings, conversation topics, personal space
-- **Dining Culture**: Table manners, tipping, dining customs
-- **Communication**: Direct vs. indirect, gestures, eye contact
-- **Gift Giving**: Appropriate gifts, presentation, occasions
-- **Quick Facts**: Key phrases, important numbers, cultural notes
+## Usage Guide 👆
 
-## Features (Planned)
+### Main Interface
+- **Browse Destinations**: Scroll through the card-based destination overview
+- **Tap Destinations**: Tap any destination card to view cultural details
+- **Add Content**: Use the purple + button to add new destinations or cultural cards
+- **Settings**: Access app preferences via the ⚙️ settings button
 
-- **Destination Selector**: Choose countries and cities to explore
-- **Cultural Essentials**: Key cultural norms, greetings, and social customs  
-- **Business Etiquette**: Meeting protocols, negotiation styles, and professional practices
-- **Quick Reference**: Do's and don'ts, key phrases, and cultural tips
-- **Offline Access**: Essential information available without internet connection
+### Cultural Learning
+- Each destination contains multiple cultural cards
+- Cards are organized by category with visual icons
+- Tap any cultural card to expand and read detailed information
+- Navigate back using the purple "Back" button
 
-## Technology Stack
+## Color Theme 🎨
 
-- **Platform**: iOS (Swift/SwiftUI)
-- **Minimum iOS Version**: iOS 17.0+
-- **Architecture**: MVVM with SwiftUI
+The app uses a consistent purple color theme (#8A2BE2) across all interactive elements:
+- Action buttons and CTAs
+- Card accents and highlights  
+- Navigation elements
+- Icon backgrounds and borders
 
-## Development Setup
+## Future Enhancements 🚀
 
-1. Clone the repository
-```bash
-git clone https://github.com/seanspsong/CoC.git
-cd CoC
-```
+- [ ] Add more destination countries
+- [ ] Implement user-generated content
+- [ ] Cultural quiz functionality
+- [ ] Offline content synchronization
+- [ ] Multi-language support
+- [ ] Business networking features
 
-2. Open `CoC.xcodeproj` in Xcode
-3. Build and run on simulator or device
+## Contributing 🤝
 
-## Contributing
+This project follows standard iOS development practices. To contribute:
 
-This project is currently in early development. Contributions, ideas, and feedback are welcome!
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
 
-## License
+## License 📄
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-### MIT License Summary
-- ✅ Commercial use
-- ✅ Modification
-- ✅ Distribution
-- ✅ Private use
-- ❌ Liability
-- ❌ Warranty
+## Contact 📧
+
+**Sean Song** - Project Developer
+- GitHub: [@seanspsong](https://github.com/seanspsong)
+- Repository: [CoC](https://github.com/seanspsong/CoC)
 
 ---
 
-*Bridging cultures, one cup at a time* ☕🌏 
+Made with 💜 for cultural learning and global business success.
