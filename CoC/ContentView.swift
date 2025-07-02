@@ -268,7 +268,7 @@ struct DestinationDetailView: View {
             }
             
             // Floating Add Card Button (Bottom Center)
-            VStack {
+        VStack {
                 Spacer()
                 HStack {
                     Spacer()
@@ -753,73 +753,98 @@ struct GeneratedCardContentView: View {
     let destination: Destination
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            // Header
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Cultural Insight")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                    .textCase(.uppercase)
-                    .tracking(1)
-                
-                HStack {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(card.title)
-                            .font(.headline)
-                            .fontWeight(.semibold)
-                        
-                        if let category = card.category {
-                            Text(category.title)
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                // Content - New 3-Section Structure
+                VStack(alignment: .leading, spacing: 24) {
+                    // Section 1: Name Card (Big Bold Font)
+                    if let nameCard = card.nameCard {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Name Card")
                                 .font(.caption)
-                                .foregroundColor(.cocPurple)
                                 .fontWeight(.medium)
+                                .foregroundColor(.secondary)
+                                .textCase(.uppercase)
+                                .tracking(1.2)
+                            
+                            Text(nameCard)
+                                .font(.largeTitle)
+                                .fontWeight(.bold)
+                                .foregroundColor(.primary)
                         }
                     }
                     
-                    Spacer()
+                    // Section 2: Key Knowledge (Bullet Points)
+                    if let keyKnowledge = card.keyKnowledge, !keyKnowledge.isEmpty {
+                        VStack(alignment: .leading, spacing: 12) {
+                            Text("Key Knowledge")
+                                .font(.headline)
+                                .fontWeight(.semibold)
+                                .foregroundColor(.cocPurple)
+                            
+                            ForEach(keyKnowledge, id: \.self) { knowledge in
+                                HStack(alignment: .top, spacing: 8) {
+                                    Text(knowledge)
+                                        .font(.subheadline)
+                                        .multilineTextAlignment(.leading)
+                                    Spacer()
+                                }
+                            }
+                        }
+                    }
                     
-                    Text(destination.flag)
-                        .font(.system(size: 32))
-                }
-            }
-            .padding(.horizontal, 24)
-            .padding(.top, 24)
-            
-            // Content
-            VStack(alignment: .leading, spacing: 16) {
-                if let insight = card.insight {
-                    Text(insight)
-                        .font(.body)
-                        .lineLimit(nil)
-                        .multilineTextAlignment(.leading)
-                }
-                
-                if let tips = card.practicalTips, !tips.isEmpty {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Practical Tips:")
-                            .font(.subheadline)
-                            .fontWeight(.semibold)
-                            .foregroundColor(.cocPurple)
-                        
-                        ForEach(tips, id: \.self) { tip in
-                            HStack(alignment: .top, spacing: 8) {
-                                Text("•")
-                                    .foregroundColor(.cocPurple)
-                                    .fontWeight(.bold)
-                                Text(tip)
-                                    .font(.caption)
+                    // Section 3: Cultural Insights (Text)
+                    if let culturalInsights = card.culturalInsights {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Cultural Insights")
+                                .font(.headline)
+                                .fontWeight(.semibold)
+                                .foregroundColor(.cocPurple)
+                            
+                            Text(culturalInsights)
+                                .font(.body)
+                                .lineLimit(nil)
+                                .multilineTextAlignment(.leading)
+                                .foregroundColor(.primary)
+                        }
+                    }
+                    
+                    // Legacy fallback: Show old format if new format not available
+                    if card.nameCard == nil && card.keyKnowledge == nil && card.culturalInsights == nil {
+                        VStack(alignment: .leading, spacing: 16) {
+                            if let insight = card.insight {
+                                Text(insight)
+                                    .font(.body)
+                                    .lineLimit(nil)
                                     .multilineTextAlignment(.leading)
-                                Spacer()
+                            }
+                            
+                            if let tips = card.practicalTips, !tips.isEmpty {
+                                VStack(alignment: .leading, spacing: 8) {
+                                    Text("Practical Tips:")
+                                        .font(.subheadline)
+                                        .fontWeight(.semibold)
+                                        .foregroundColor(.cocPurple)
+                                    
+                                    ForEach(tips, id: \.self) { tip in
+                                        HStack(alignment: .top, spacing: 8) {
+                                            Text(tip)
+                                                .font(.caption)
+                                                .multilineTextAlignment(.leading)
+                                            Spacer()
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
                 }
+                .padding(.horizontal, 24)
+                .padding(.top, 24)
+                .padding(.bottom, 40) // Increased bottom padding for better scroll experience
             }
-            .padding(.horizontal, 24)
-            .padding(.bottom, 20)
-            
-            Spacer()
         }
+        .scrollIndicators(.hidden) // Hide scroll indicators for cleaner look
     }
 }
 

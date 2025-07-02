@@ -1,6 +1,6 @@
 # Cup of Culture (CoC) 🌍
 
-An iOS application designed to help international business professionals and travelers quickly learn destination cultures through an intuitive, card-based interface.
+An iOS application designed to help international travelers quickly learn destination cultures through an intuitive, card-based interface.
 
 ## Features ✨
 
@@ -127,7 +127,7 @@ Made with 💜 for cultural learning and global business success.
 # Cup of Culture - AI-Powered Cultural Cards
 
 ## 🎯 Project Overview
-Cup of Culture is an iOS app that helps international business professionals learn destination cultures through AI-generated cultural insight cards. The app uses iOS 26's on-device Foundation model to create personalized cultural knowledge based on voice queries.
+Cup of Culture is an iOS app that helps international travelers learn destination cultures through AI-generated cultural insight cards. The app uses iOS 26's on-device Foundation model to create personalized cultural knowledge based on voice queries.
 
 ## ✨ Core Features
 
@@ -184,80 +184,244 @@ Voice Input → Speech Recognition → Text Processing → LLM Prompt → Genera
 - **Error Handling**: Clear messages for recording/generation failures
 - **Accessibility**: VoiceOver support for all states
 
-## 🧠 AI Prompt Engineering
+## 📝 Prompts
 
-### System Prompt
+This section documents the simplified AI prompts used in the Cup of Culture system for generating cultural insights.
+
+### 🤖 System Instructions (LanguageModelSession)
+
+The following simplified instructions are set when initializing the `LanguageModelSession`:
+
 ```
-You are a cultural intelligence expert helping international business professionals understand local customs and practices. Your role is to provide practical, actionable cultural insights that help build respectful business relationships.
-
-Context: User is traveling to [DESTINATION] for business purposes.
-
-Guidelines:
-- Provide specific, actionable advice
-- Focus on business and professional contexts
-- Include DO and DON'T examples
-- Explain the cultural reasoning behind practices
-- Keep responses concise but comprehensive (2-3 paragraphs)
-- Use respectful, professional tone
-- Avoid stereotypes or oversimplifications
-
-Categories to consider:
-- Business Etiquette & Meeting Protocols
-- Social Customs & Relationship Building  
-- Communication Styles & Non-verbal Cues
-- Gift Giving & Entertainment
-- Dining Etiquette & Food Culture
-- Time Management & Scheduling
-- Hierarchy & Decision Making
-- Greeting Customs & Personal Space
-
-Format your response as:
-Title: [Concise topic title]
-Category: [One of the categories above]
-Insight: [Main cultural insight paragraph]
-Practical Tips: [Specific do's and don'ts]
+You are a cultural expert helping people understand local customs and practices. Provide helpful cultural insights that are accurate and respectful.
 ```
 
-### User Prompt Template
+### 🎯 Structured Response Schema
+
+The AI uses guided generation with a **3-section cultural card structure**:
+
+```swift
+@Generable
+struct CulturalInsightResponse {
+    @Guide(description: "A concise, descriptive title for the cultural insight")
+    let title: String
+    
+    @Guide(description: "One of: Business Etiquette, Social Customs, Communication Styles, Gift Giving, Dining Etiquette, Time Management, Hierarchy, Greeting Customs")
+    let category: String
+    
+    @Guide(description: "One word/concept or full person name that captures the essence (e.g., 'Respect', 'Hierarchy', 'Tanaka Hiroshi', 'Protocol')")
+    let nameCard: String
+    
+    @Guide(description: "Exactly 4 key knowledge points starting with relevant emojis", .count(4))
+    let keyKnowledge: [String]
+    
+    @Guide(description: "A comprehensive cultural insight paragraph explaining the practice and cultural reasoning")
+    let culturalInsights: String
+}
+```
+
+### 💬 User Prompt Template
+
+For each voice query, the system constructs a simplified prompt using this template:
+
 ```
 Destination: [DESTINATION_NAME]
 User Question: "[TRANSCRIBED_VOICE_INPUT]"
 
-Please generate a cultural insight card that addresses the user's question in the context of doing business in [DESTINATION_NAME]. Focus on practical advice that will help them navigate this cultural aspect professionally and respectfully.
+Please provide a cultural insight about [DESTINATION_NAME] that addresses the user's question. Structure your response with:
+1. A name card: use a full person name (given name + family name) if about specific people/roles, otherwise use one concept word
+2. Four key knowledge points starting with relevant emojis
+3. Comprehensive cultural insights paragraph
 ```
 
-### Example Prompts & Responses
-
-**User Input**: "How should I greet people in business meetings in Japan?"
-
-**Generated Response**:
+**Example Prompt:**
 ```
-Title: Business Greeting Etiquette
-Category: Business Etiquette & Meeting Protocols
-Insight: In Japanese business culture, the bow (ojigi) is the traditional greeting that shows respect and hierarchy awareness. The depth and duration of your bow should reflect the status of the person you're greeting - deeper bows for senior executives, lighter bows for peers. However, many Japanese businesspeople now expect handshakes when meeting international colleagues, creating a hybrid approach.
-Practical Tips: 
-• DO: Offer a slight bow while extending your hand for a handshake
-• DO: Wait for the senior person to initiate the greeting
-• DON'T: Rush the greeting process - allow time for proper acknowledgment
-• DON'T: Use overly firm handshakes; Japanese prefer gentler grips
+Destination: Japan
+User Question: "How should I greet people in business meetings?"
+
+Please provide a cultural insight about Japan that addresses the user's question. Structure your response with:
+1. A name card: use a full person name (given name + family name) if about specific people/roles, otherwise use one concept word
+2. Four key knowledge points starting with relevant emojis
+3. Comprehensive cultural insights paragraph
 ```
+
+### 🎭 Mock Response Templates (Development Fallbacks)
+
+For development and testing, the system includes contextual mock responses:
+
+#### Greeting Response Template
+```json
+{
+    "title": "Business Greeting Etiquette",
+    "category": "Greeting Customs & Personal Space",
+    "nameCard": "Respect",
+    "keyKnowledge": [
+        "🙇 Bowing depth reflects hierarchy and respect levels",
+        "🤝 Handshakes are becoming common with international colleagues",
+        "👴 Senior person should initiate the greeting interaction",
+        "🤏 Gentle grip preferred over firm Western-style handshakes"
+    ],
+    "culturalInsights": "In Japanese business culture, the bow (ojigi) is the traditional greeting that shows respect and hierarchy awareness. The depth and duration of your bow should reflect the status of the person you're greeting - deeper bows for senior executives, lighter bows for peers. However, many Japanese businesspeople now expect handshakes when meeting international colleagues, creating a hybrid approach that honors both traditions."
+}
+```
+
+#### Meeting Response Template
+```json
+{
+    "title": "Business Meeting Protocols",
+    "category": "Business Etiquette & Meeting Protocols",
+    "nameCard": "Protocol",
+    "keyKnowledge": [
+        "⏰ Punctuality demonstrates respect and professionalism",
+        "💳 Business card exchange follows specific cultural rules",
+        "📊 Hierarchy determines speaking order and decision-making",
+        "📚 Cultural preparation shows commitment to relationships"
+    ],
+    "culturalInsights": "Business meetings in [DESTINATION] follow specific cultural protocols that demonstrate respect and professionalism. Understanding hierarchy, timing, and communication styles is crucial for successful interactions. Preparation and attention to cultural nuances can make the difference between building strong business relationships and missing opportunities."
+}
+```
+
+#### Dining Response Template
+```json
+{
+    "title": "Business Dining Etiquette",
+    "category": "Dining Etiquette & Food Culture",
+    "nameCard": "Dining",
+    "keyKnowledge": [
+        "🍽️ Host always initiates eating and drinking",
+        "👍 Trying local dishes shows cultural appreciation",
+        "💬 Build rapport before discussing business matters",
+        "🙏 Politely explain if you cannot eat something offered"
+    ],
+    "culturalInsights": "Business dining in [DESTINATION] is an important relationship-building activity with specific etiquette rules. Understanding proper table manners, gift-giving customs, and conversation topics can strengthen business partnerships. The way you handle dining situations often reflects your respect for local culture and attention to detail."
+}
+```
+
+#### General Response Template
+```json
+{
+    "title": "Cultural Business Insight",
+    "category": "Social Customs & Relationship Building",
+    "nameCard": "Culture",
+    "keyKnowledge": [
+        "📚 Research local customs before important interactions",
+        "❤️ Show genuine interest in cultural traditions",
+        "🚫 Avoid assumptions based on stereotypes",
+        "👀 Pay attention to subtle social cues and non-verbal communication"
+    ],
+    "culturalInsights": "Understanding cultural nuances in [DESTINATION] requires attention to both explicit customs and subtle social cues. Business relationships are built on mutual respect and cultural awareness. Taking time to learn and demonstrate appreciation for local customs shows professionalism and can lead to stronger, more successful business partnerships."
+}
+```
+
+#### Executive Meeting Response Template (with Person Name)
+```json
+{
+    "title": "Meeting with Senior Executive",
+    "category": "Business Etiquette & Meeting Protocols",
+    "nameCard": "Tanaka Hiroshi",
+    "keyKnowledge": [
+        "🎩 Address executives using full title and surname initially",
+        "📋 Prepare detailed agenda and supporting materials in advance",
+        "⏳ Wait for senior person to initiate business discussion",
+        "📝 Follow up meetings with formal written summary"
+    ],
+    "culturalInsights": "When meeting with senior executives in Japan, the cultural emphasis on hierarchy and respect becomes paramount. Executive meetings follow strict protocols that demonstrate your understanding of Japanese business culture and your respect for organizational structure."
+}
+```
+
+### 🏷️ Cultural Categories
+
+The system maps responses to these predefined cultural categories:
+
+- **Business Etiquette & Meeting Protocols** → `.businessEtiquette`
+- **Social Customs & Relationship Building** → `.socialCustoms`
+- **Communication Styles & Non-verbal Cues** → `.communication`
+- **Gift Giving & Entertainment** → `.giftGiving`
+- **Dining Etiquette & Food Culture** → `.diningCulture`
+- **Time Management & Scheduling** → `.timeManagement`
+- **Hierarchy & Decision Making** → `.hierarchy`
+- **Greeting Customs & Personal Space** → `.greetingCustoms`
+
+### 🧪 Prompt Testing Strategy
+
+#### Context Detection
+The system analyzes user queries to select appropriate response templates:
+- **Greeting queries**: Contains "greet", "hello" → Greeting Response
+- **Meeting queries**: Contains "meeting", "business" → Meeting Response  
+- **Dining queries**: Contains "food", "eat", "dining" → Dining Response
+- **General queries**: All other inputs → General Response
+
+#### Quality Assurance
+- **Cultural Accuracy**: Responses are reviewed for cultural sensitivity
+- **Practical Focus**: Provides helpful, actionable advice for users
+- **Respectful Tone**: Avoids stereotypes and maintains respectful language
+- **Structured Format**: Consistent JSON schema for reliable parsing
+
+### 📋 Example Usage
+
+**Voice Input**: "How should I greet people in business meetings in Japan?"
+
+**System Processing**: 
+1. Speech-to-text converts voice to: `"How should I greet people in business meetings in Japan?"`
+2. Simplified template constructs prompt with destination context
+3. LanguageModelSession generates structured response using cultural expertise
+4. Response is converted to CulturalCard with proper categorization
+
+**Generated Card**:
+- **Title**: "Business Greeting Etiquette" 
+- **Category**: Greeting Customs & Personal Space
+- **Name Card**: "Respect" (displayed in large, bold font)
+- **Key Knowledge**: 4 emoji-prefixed bullet points about greeting protocols  
+- **Cultural Insights**: Comprehensive explanation of Japanese greeting traditions
 
 ## 🔧 Technical Implementation
 
 ### iOS 26 Foundation Model Integration
 ```swift
-import MLGeneration
+import FoundationModels
+
+@Generable
+struct CulturalInsightResponse {
+    @Guide(description: "A concise, descriptive title for the cultural insight")
+    let title: String
+    
+    @Guide(description: "One of: Business Etiquette, Social Customs, Communication Styles, Gift Giving, Dining Etiquette, Time Management, Hierarchy, Greeting Customs")
+    let category: String
+    
+    @Guide(description: "One word/concept or full person name that captures the essence (e.g., 'Respect', 'Hierarchy', 'Tanaka Hiroshi', 'Protocol')")
+    let nameCard: String
+    
+    @Guide(description: "Exactly 4 key knowledge points starting with relevant emojis", .count(4))
+    let keyKnowledge: [String]
+    
+    @Guide(description: "A comprehensive cultural insight paragraph explaining the practice and cultural reasoning")
+    let culturalInsights: String
+}
 
 class AICardGenerator {
-    private let model = MLGeneration.shared
+    private let languageSession: LanguageModelSession
+    
+    init() {
+        let instructions = """
+        You are a cultural expert helping people understand local customs and practices. Provide helpful cultural insights that are accurate and respectful.
+        """
+        
+        languageSession = LanguageModelSession(instructions: instructions)
+    }
     
     func generateCulturalCard(
         destination: String,
         userQuery: String
     ) async throws -> CulturalCard {
         let prompt = buildPrompt(destination: destination, query: userQuery)
-        let response = try await model.generateText(prompt: prompt)
-        return parseToCulturalCard(response)
+        
+        // Use guided generation with structured response
+        let response = try await languageSession.respond(
+            to: prompt,
+            generating: CulturalInsightResponse.self
+        )
+        
+        return convertToCulturalCard(response: response.content, destination: destination)
     }
 }
 ```

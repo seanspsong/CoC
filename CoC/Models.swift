@@ -16,6 +16,22 @@ struct Destination: Identifiable, Codable {
     var dateAdded: Date
     var lastUpdated: Date
     
+    // Custom CodingKeys to exclude id from encoding/decoding
+    private enum CodingKeys: String, CodingKey {
+        case name, flag, culturalCards, dateAdded, lastUpdated
+    }
+    
+    // Custom decoder to handle id initialization
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        
+        self.name = try container.decode(String.self, forKey: .name)
+        self.flag = try container.decode(String.self, forKey: .flag)
+        self.culturalCards = try container.decode([CulturalCard].self, forKey: .culturalCards)
+        self.dateAdded = try container.decode(Date.self, forKey: .dateAdded)
+        self.lastUpdated = try container.decode(Date.self, forKey: .lastUpdated)
+    }
+    
     init(name: String, flag: String) {
         self.name = name
         self.flag = flag
@@ -46,10 +62,37 @@ struct CulturalCard: Identifiable, Codable {
     
     // AI-Generated Card Properties
     var category: CulturalCategory?
-    var insight: String?
-    var practicalTips: [String]?
+    var nameCard: String?           // Section 1: One word/name (big bold)
+    var keyKnowledge: [String]?     // Section 2: Key Knowledge (bullet points)
+    var culturalInsights: String?   // Section 3: Cultural Insights (text paragraph)
     var isAIGenerated: Bool
     var destination: String?
+    
+    // Legacy properties for backward compatibility (computed properties - not encoded)
+    var insight: String? { culturalInsights }
+    var practicalTips: [String]? { keyKnowledge }
+    
+    // Custom CodingKeys to exclude id and computed properties from encoding/decoding
+    private enum CodingKeys: String, CodingKey {
+        case type, title, content, dateAdded
+        case category, nameCard, keyKnowledge, culturalInsights, isAIGenerated, destination
+    }
+    
+    // Custom decoder to handle id initialization
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        
+        self.type = try container.decode(CardType.self, forKey: .type)
+        self.title = try container.decode(String.self, forKey: .title)
+        self.content = try container.decode(String.self, forKey: .content)
+        self.dateAdded = try container.decode(Date.self, forKey: .dateAdded)
+        self.category = try container.decodeIfPresent(CulturalCategory.self, forKey: .category)
+        self.nameCard = try container.decodeIfPresent(String.self, forKey: .nameCard)
+        self.keyKnowledge = try container.decodeIfPresent([String].self, forKey: .keyKnowledge)
+        self.culturalInsights = try container.decodeIfPresent(String.self, forKey: .culturalInsights)
+        self.isAIGenerated = try container.decode(Bool.self, forKey: .isAIGenerated)
+        self.destination = try container.decodeIfPresent(String.self, forKey: .destination)
+    }
     
     // Traditional card initializer
     init(type: CardType, title: String, content: String) {
@@ -59,8 +102,9 @@ struct CulturalCard: Identifiable, Codable {
         self.dateAdded = Date()
         self.isAIGenerated = false
         self.category = nil
-        self.insight = nil
-        self.practicalTips = nil
+        self.nameCard = nil
+        self.keyKnowledge = nil
+        self.culturalInsights = nil
         self.destination = nil
     }
     
@@ -68,16 +112,18 @@ struct CulturalCard: Identifiable, Codable {
     init(
         title: String,
         category: CulturalCategory,
-        insight: String,
-        practicalTips: [String],
+        nameCard: String,
+        keyKnowledge: [String],
+        culturalInsights: String,
         destination: String
     ) {
         self.type = category.cardType
         self.title = title
-        self.content = insight // Use insight as primary content
+        self.content = culturalInsights // Use cultural insights as primary content for legacy compatibility
         self.category = category
-        self.insight = insight
-        self.practicalTips = practicalTips
+        self.nameCard = nameCard
+        self.keyKnowledge = keyKnowledge
+        self.culturalInsights = culturalInsights
         self.isAIGenerated = true
         self.destination = destination
         self.dateAdded = Date()
