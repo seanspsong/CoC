@@ -90,6 +90,9 @@ struct ContentView: View {
                                 self.selectedCard = card
                             }
                         },
+                        onCardDelete: { card in
+                            deleteCard(card, from: currentDestination)
+                        },
                         onAddCard: {
                             addNewCard()
                         }
@@ -170,6 +173,12 @@ struct ContentView: View {
         dataManager.addCard(card, to: destination)
         // No need to update selectedDestination since the view now gets current data from DataManager
     }
+    
+    private func deleteCard(_ card: CulturalCard, from destination: Destination) {
+        // Use DataManager to remove the card and automatically save
+        dataManager.removeCard(card, from: destination)
+        print("🗑️ Deleted card: \(card.title)")
+    }
 }
 
 // MARK: - Destinations Overview View
@@ -204,6 +213,7 @@ struct DestinationsOverviewView: View {
 struct DestinationDetailView: View {
     let destination: Destination
     let onCardTap: (CulturalCard) -> Void
+    let onCardDelete: (CulturalCard) -> Void
     let onAddCard: () -> Void
     let onBack: () -> Void
     
@@ -252,7 +262,11 @@ struct DestinationDetailView: View {
                     .padding(.bottom, 20)
                     
                     // Staggered Cultural Cards Layout (PPnotes style)
-                    StaggeredCulturalCardsGrid(cards: destination.culturalCards, onCardTap: onCardTap)
+                    StaggeredCulturalCardsGrid(
+                        cards: destination.culturalCards, 
+                        onCardTap: onCardTap,
+                        onCardDelete: onCardDelete
+                    )
                         .padding(.horizontal, 20)
                         .padding(.bottom, 32)
                 }
@@ -1044,7 +1058,10 @@ struct CulturalCardView: View {
     let card: CulturalCard
     let index: Int
     let onTap: () -> Void
+    let onDelete: () -> Void
+    @Binding var isDeleteMode: Bool
     @State private var isPressed = false
+    @State private var shakeOffset: CGFloat = 0
     
     // Random card height for staggered effect (PPnotes style)
     private var cardHeight: CGFloat {
@@ -1217,11 +1234,42 @@ struct CulturalCardView: View {
                 .stroke(Color(.systemGray6), lineWidth: 0.5)
         }
         .rotationEffect(.degrees(rotation)) // Random tilt for organic feel
-        .offset(positionOffset) // Slight position variation for organic feel
-        .scaleEffect(isPressed ? 0.96 : 1.0)
+        .offset(x: positionOffset.width + shakeOffset, y: positionOffset.height) // Slight position variation + shake
+        .scaleEffect(isPressed ? 0.96 : (isDeleteMode ? 0.95 : 1.0))
         .animation(.easeInOut(duration: 0.15), value: isPressed)
+        .animation(.easeInOut(duration: 0.2), value: isDeleteMode)
+        .overlay {
+            // Delete button overlay
+            if isDeleteMode {
+                VStack {
+                    HStack {
+                        Spacer()
+                        Button(action: {
+                            // Haptic feedback for deletion
+                            let impactFeedback = UIImpactFeedbackGenerator(style: .heavy)
+                            impactFeedback.impactOccurred()
+                            
+                            // Call delete action with animation
+                            withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) {
+                                onDelete()
+                            }
+                        }) {
+                            Image(systemName: "minus.circle.fill")
+                                .font(.system(size: 20, weight: .medium))
+                                .foregroundColor(.red)
+                                .background(Color.white)
+                                .clipShape(Circle())
+                                .shadow(color: .black.opacity(0.2), radius: 2, x: 0, y: 1)
+                        }
+                        .offset(x: 6, y: -6) // Position slightly outside top-right corner
+                    }
+                    Spacer()
+                }
+                .animation(.easeInOut(duration: 0.2), value: isDeleteMode)
+            }
+        }
         .onTapGesture {
-            // Press animation feedback
+            // Normal tap behavior (delete mode handled in parent)
             withAnimation(.easeInOut(duration: 0.1)) {
                 isPressed = true
             }
@@ -1235,6 +1283,38 @@ struct CulturalCardView: View {
             // Call the tap action
             onTap()
         }
+        .onLongPressGesture(minimumDuration: 0.5) {
+            // Long press detected - enter delete mode
+            withAnimation(.easeInOut(duration: 0.3)) {
+                isDeleteMode = true
+            }
+        } onPressingChanged: { pressing in
+            // Haptic feedback on press start
+            if pressing && !isDeleteMode {
+                let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
+                impactFeedback.impactOccurred()
+            }
+        }
+        .onChange(of: isDeleteMode) { oldValue, newValue in
+            if newValue {
+                startShaking()
+            } else {
+                stopShaking()
+            }
+        }
+    }
+    
+    // MARK: - Shake Animation Methods
+    private func startShaking() {
+        withAnimation(.easeInOut(duration: 0.1).repeatForever(autoreverses: true)) {
+            shakeOffset = 2
+        }
+    }
+    
+    private func stopShaking() {
+        withAnimation(.easeInOut(duration: 0.1)) {
+            shakeOffset = 0
+        }
     }
 }
 
@@ -1242,6 +1322,8 @@ struct CulturalCardView: View {
 struct StaggeredCulturalCardsGrid: View {
     let cards: [CulturalCard]
     let onCardTap: (CulturalCard) -> Void
+    let onCardDelete: (CulturalCard) -> Void
+    @State private var isDeleteMode = false
     
     var body: some View {
         GeometryReader { geometry in
@@ -1252,9 +1334,23 @@ struct StaggeredCulturalCardsGrid: View {
                 // Left column
                 LazyVStack(spacing: 16) {
                     ForEach(Array(leftColumnCards.enumerated()), id: \.element.id) { index, card in
-                        CulturalCardView(card: card, index: leftColumnIndex(for: index), onTap: {
-                            onCardTap(card)
-                        })
+                        CulturalCardView(
+                            card: card, 
+                            index: leftColumnIndex(for: index), 
+                            onTap: {
+                                if !isDeleteMode {
+                                    onCardTap(card)
+                                }
+                            },
+                            onDelete: {
+                                onCardDelete(card)
+                                // Exit delete mode after deletion
+                                withAnimation(.easeInOut(duration: 0.3)) {
+                                    isDeleteMode = false
+                                }
+                            },
+                            isDeleteMode: $isDeleteMode
+                        )
                         .transition(.asymmetric(
                             insertion: .scale.combined(with: .opacity),
                             removal: .scale.combined(with: .opacity)
@@ -1267,9 +1363,23 @@ struct StaggeredCulturalCardsGrid: View {
                 // Right column
                 LazyVStack(spacing: 16) {
                     ForEach(Array(rightColumnCards.enumerated()), id: \.element.id) { index, card in
-                        CulturalCardView(card: card, index: rightColumnIndex(for: index), onTap: {
-                            onCardTap(card)
-                        })
+                        CulturalCardView(
+                            card: card, 
+                            index: rightColumnIndex(for: index), 
+                            onTap: {
+                                if !isDeleteMode {
+                                    onCardTap(card)
+                                }
+                            },
+                            onDelete: {
+                                onCardDelete(card)
+                                // Exit delete mode after deletion
+                                withAnimation(.easeInOut(duration: 0.3)) {
+                                    isDeleteMode = false
+                                }
+                            },
+                            isDeleteMode: $isDeleteMode
+                        )
                         .transition(.asymmetric(
                             insertion: .scale.combined(with: .opacity),
                             removal: .scale.combined(with: .opacity)
@@ -1281,6 +1391,14 @@ struct StaggeredCulturalCardsGrid: View {
             }
         }
         .frame(height: maxColumnHeight + 50) // Dynamic height based on content
+        .onTapGesture {
+            if isDeleteMode {
+                // Exit delete mode when tapping outside cards
+                withAnimation(.easeInOut(duration: 0.3)) {
+                    isDeleteMode = false
+                }
+            }
+        }
     }
     
     // Split cards into two columns for staggered layout

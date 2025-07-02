@@ -140,6 +140,15 @@ class DataManager: ObservableObject {
         }
     }
     
+    func removeCard(_ card: CulturalCard, from destination: Destination) {
+        if let destIndex = destinations.firstIndex(where: { $0.id == destination.id }),
+           let cardIndex = destinations[destIndex].culturalCards.firstIndex(where: { $0.id == card.id }) {
+            destinations[destIndex].removeCard(at: cardIndex)
+            saveDestinations()
+            print("➖ [DataManager] Removed card '\(card.title)' from \(destination.name)")
+        }
+    }
+    
     func updateDestination(_ destination: Destination) {
         if let index = destinations.firstIndex(where: { $0.id == destination.id }) {
             destinations[index] = destination
