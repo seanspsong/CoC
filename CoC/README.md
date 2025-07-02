@@ -17,22 +17,35 @@ Cup of Culture helps users navigate cultural differences by providing essential 
 ## Technology Stack
 
 - **Platform**: iOS (Swift/SwiftUI)
-- **Minimum iOS Version**: TBD
-- **Architecture**: TBD
+- **Minimum iOS Version**: iOS 17.0+
+- **Architecture**: MVVM with SwiftUI
 
 ## Development Setup
 
 1. Clone the repository
+```bash
+git clone https://github.com/seanspsong/CoC.git
+cd CoC
+```
+
 2. Open `CoC.xcodeproj` in Xcode
 3. Build and run on simulator or device
 
 ## Contributing
 
-This project is currently in early development.
+This project is currently in early development. Contributions, ideas, and feedback are welcome!
 
 ## License
 
-TBD
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+### MIT License Summary
+- ✅ Commercial use
+- ✅ Modification
+- ✅ Distribution
+- ✅ Private use
+- ❌ Liability
+- ❌ Warranty
 
 ---
 
