@@ -256,6 +256,8 @@
 				DEVELOPMENT_TEAM = ZW8PRW8M63;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Cup of Culture uses your microphone to record voice questions about cultural practices. Your voice is processed on-device to generate personalized cultural insight cards for business travel.";
+				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Cup of Culture uses speech recognition to convert your voice questions into text, which is then used to generate relevant cultural insight cards. All speech processing happens on your device for privacy.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -287,6 +289,8 @@
 				DEVELOPMENT_TEAM = ZW8PRW8M63;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Cup of Culture uses your microphone to record voice questions about cultural practices. Your voice is processed on-device to generate personalized cultural insight cards for business travel.";
+				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Cup of Culture uses speech recognition to convert your voice questions into text, which is then used to generate relevant cultural insight cards. All speech processing happens on your device for privacy.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
