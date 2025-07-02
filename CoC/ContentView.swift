@@ -36,16 +36,6 @@ struct ContentView: View {
                 // Floating Buttons Overlay
                 VStack {
                     HStack {
-                        // Floating Add Button (Top Left)
-                        FloatingActionButton(
-                            isEmpty: destinations.isEmpty,
-                            isInDestination: selectedDestination != nil
-                        ) {
-                            handleFloatingActionTap()
-                        }
-                        .padding(.leading, 20)
-                        .padding(.top, 8)
-                        
                         Spacer()
                         
                         // Floating Settings Button (Top Right)
@@ -112,14 +102,16 @@ struct DestinationsOverviewView: View {
             LazyVGrid(columns: [
                 GridItem(.adaptive(minimum: 180))
             ], spacing: 20) {
-                ForEach(destinations) { destination in
-                    Button(action: {
-                        onDestinationTap(destination)
-                    }) {
-                        DestinationCardView(destination: destination)
-                    }
-                    .buttonStyle(CardButtonStyle())
-                }
+                                        ForEach(Array(destinations.enumerated()), id: \.element.id) { index, destination in
+                            DestinationCardView(destination: destination, onTap: {
+                                onDestinationTap(destination)
+                            })
+                            .transition(.asymmetric(
+                                insertion: .scale.combined(with: .opacity),
+                                removal: .scale.combined(with: .opacity)
+                            ))
+                            .animation(.spring(response: 1.2, dampingFraction: 0.9).delay(Double(index) * 0.1), value: destinations.count)
+                        }
             }
             .padding(.horizontal, 20)
             .padding(.top, 80) // Top padding to avoid floating buttons
@@ -177,20 +169,15 @@ struct DestinationDetailView: View {
                     .padding(.top, 100) // Extra top padding for floating buttons
                     .padding(.bottom, 20)
                     
-                    // Cultural Cards
-                    LazyVStack(spacing: 24) {
-                        ForEach(destination.culturalCards) { card in
-                            CulturalCardView(card: card)
-                        }
-                    }
-                    .padding(.horizontal, 20)
-                    .padding(.bottom, 32)
+                    // Staggered Cultural Cards Layout (PPnotes style)
+                    StaggeredCulturalCardsGrid(cards: destination.culturalCards)
+                        .padding(.horizontal, 20)
+                        .padding(.bottom, 32)
                 }
             }
             
-            // Floating Back Button (Bottom Left)
+            // Floating Back Button (Top Left)
             VStack {
-                Spacer()
                 HStack {
                     Button(action: onBack) {
                         HStack(spacing: 6) {
@@ -209,10 +196,11 @@ struct DestinationDetailView: View {
                         .shadow(color: .black.opacity(0.2), radius: 8, x: 0, y: 4)
                     }
                     .padding(.leading, 20)
-                    .padding(.bottom, 30)
+                    .padding(.top, 8)
                     
                     Spacer()
                 }
+                Spacer()
             }
         }
     }
@@ -223,6 +211,8 @@ struct FloatingActionButton: View {
     let isEmpty: Bool
     let isInDestination: Bool
     let action: () -> Void
+    @State private var isPressed = false
+    @State private var pulseAnimation = false
     
     var buttonText: String {
         if isEmpty {
@@ -234,12 +224,17 @@ struct FloatingActionButton: View {
         }
     }
     
+    private var pulseEffect: CGFloat {
+        pulseAnimation ? 1.05 : 1.0
+    }
+    
     var body: some View {
         Button(action: action) {
             HStack {
                 Text("+")
                     .font(.title2)
                     .fontWeight(.semibold)
+                    .scaleEffect(isPressed ? 0.9 : 1.0)
                 if isEmpty {
                     Text(buttonText)
                         .font(.headline)
@@ -250,7 +245,33 @@ struct FloatingActionButton: View {
             .padding(.vertical, 16)
             .background(Color.cocPurple)
             .clipShape(Capsule())
-            .shadow(color: .black.opacity(0.2), radius: 4, x: 0, y: 2)
+            .shadow(color: .black.opacity(isPressed ? 0.3 : 0.2), radius: isPressed ? 6 : 4, x: 0, y: isPressed ? 3 : 2)
+            .scaleEffect(pulseEffect)
+            .animation(.easeInOut(duration: 0.1), value: isPressed)
+            .animation(.easeInOut(duration: 2.0).repeatForever(autoreverses: true), value: pulseAnimation)
+        }
+        .buttonStyle(PlainButtonStyle())
+        .onTapGesture {
+            // Press animation feedback
+            withAnimation(.easeInOut(duration: 0.1)) {
+                isPressed = true
+            }
+            
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                withAnimation(.easeInOut(duration: 0.1)) {
+                    isPressed = false
+                }
+            }
+            
+            action()
+        }
+        .onAppear {
+            // Start pulse animation
+            if !isInDestination {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                    pulseAnimation = true
+                }
+            }
         }
     }
 }
@@ -258,6 +279,8 @@ struct FloatingActionButton: View {
 // MARK: - Supporting Views
 struct DestinationCardView: View {
     let destination: Destination
+    let onTap: () -> Void
+    @State private var isPressed = false
     
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -314,83 +337,239 @@ struct DestinationCardView: View {
         .background {
             RoundedRectangle(cornerRadius: 16)
                 .fill(Color(.systemBackground))
-                .shadow(color: .black.opacity(0.08), radius: 8, x: 0, y: 4)
-                .shadow(color: .black.opacity(0.04), radius: 2, x: 0, y: 1)
+                .shadow(color: .black.opacity(isPressed ? 0.15 : 0.08), radius: isPressed ? 12 : 8, x: 0, y: isPressed ? 6 : 4)
+                .shadow(color: .black.opacity(isPressed ? 0.08 : 0.04), radius: isPressed ? 4 : 2, x: 0, y: 1)
         }
         .overlay {
             RoundedRectangle(cornerRadius: 16)
-                .stroke(Color(.systemGray5), lineWidth: 0.5)
+                .stroke(isPressed ? Color.cocPurple.opacity(0.2) : Color(.systemGray5), lineWidth: isPressed ? 1.0 : 0.5)
         }
-        .scaleEffect(1.0)
+        .scaleEffect(isPressed ? 0.97 : 1.0)
+        .animation(.easeInOut(duration: 0.15), value: isPressed)
         .animation(.easeInOut(duration: 0.2), value: destination.culturalCards.count)
+        .onTapGesture {
+            // Press animation feedback
+            withAnimation(.easeInOut(duration: 0.1)) {
+                isPressed = true
+            }
+            
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                withAnimation(.easeInOut(duration: 0.1)) {
+                    isPressed = false
+                }
+            }
+            
+            onTap()
+        }
     }
 }
 
 struct CulturalCardView: View {
     let card: CulturalCard
+    let index: Int
+    @State private var isPressed = false
+    
+    // Random card height for staggered effect (PPnotes style)
+    private var cardHeight: CGFloat {
+        let heights: [CGFloat] = [140, 150, 145, 160, 155, 145, 165, 135, 150]
+        return heights[index % heights.count]
+    }
+    
+    // Random slight rotation for organic feel (PPnotes style)
+    private var rotation: Double {
+        let rotations: [Double] = [-4, -2, -1, 0, 1, 2, 4, -3, 3, -1.5, 1.5]
+        return rotations[index % rotations.count]
+    }
+    
+    // Slight position offset for natural look
+    private var positionOffset: CGSize {
+        let xOffsets: [CGFloat] = [-3, 2, -2, 4, 0, -4, 3, -1, 1]
+        let yOffsets: [CGFloat] = [-2, 1, -3, 2, 0, -1, 3, -2, 1]
+        return CGSize(
+            width: xOffsets[index % xOffsets.count],
+            height: yOffsets[index % yOffsets.count]
+        )
+    }
     
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            // Card Header
-            HStack(spacing: 12) {
-                // Icon background with accent color
-                Text(card.type.emoji)
-                    .font(.title2)
-                    .frame(width: 48, height: 48)
-                    .background(
-                        RoundedRectangle(cornerRadius: 14)
-                            .fill(Color.cocPurple.opacity(0.1))
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 14)
-                                    .stroke(Color.cocPurple.opacity(0.2), lineWidth: 1)
-                            )
-                    )
-                
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(card.type.title)
-                        .font(.title3)
-                        .fontWeight(.bold)
-                        .foregroundColor(.primary)
+            // Header with timestamp-style date (PPnotes uniform style)
+            HStack {
+                Spacer()
+                VStack(alignment: .trailing, spacing: 2) {
+                    Text("Cultural")
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                        .fontWeight(.medium)
                     
-                    Text(card.type.description)
+                    Text("Insight")
                         .font(.caption)
                         .foregroundColor(.secondary)
-                        .lineLimit(2)
                 }
+            }
+            .padding(.horizontal, 16)
+            .padding(.top, 12)
+            
+            // Title section (PPnotes uniform style)
+            HStack {
+                Text(card.type.title)
+                    .font(.headline)
+                    .fontWeight(.semibold)
+                    .lineLimit(2)
+                    .foregroundColor(.primary)
                 
                 Spacer()
+                
+                // Category emoji
+                Text(card.type.emoji)
+                    .font(.system(size: 18))
             }
-            .padding(.horizontal, 24)
-            .padding(.top, 24)
-            .padding(.bottom, 18)
+            .padding(.horizontal, 16)
+            .padding(.top, 6)
             
-            // Enhanced Divider
-            Rectangle()
-                .fill(Color(.systemGray4))
-                .frame(height: 1)
-                .padding(.horizontal, 24)
-            
-            // Card Content
+            // Content preview (PPnotes transcription style)
             Text(card.content)
-                .font(.body)
-                .foregroundColor(.primary)
-                .lineSpacing(6)
-                .padding(.horizontal, 24)
-                .padding(.top, 18)
-                .padding(.bottom, 24)
+                .font(.caption)
+                .foregroundColor(.secondary)
+                .lineLimit(3)
+                .multilineTextAlignment(.leading)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 8)
+            
+            Spacer()
+            
+            // Bottom section (simplified)
+            HStack {
+                Text(card.type.description)
+                    .font(.footnote)
+                    .fontWeight(.medium)
+                    .foregroundColor(.secondary)
+                    .lineLimit(1)
+                
+                Spacer()
+                
+                Text("Tap to learn")
+                    .font(.caption2)
+                    .foregroundColor(.cocPurple)
+                    .fontWeight(.medium)
+            }
+            .padding(.horizontal, 16)
+            .padding(.bottom, 12)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(height: cardHeight) // Variable height for staggered effect
         .background {
-            RoundedRectangle(cornerRadius: 20)
+            RoundedRectangle(cornerRadius: 12)
                 .fill(Color(.systemBackground))
-                .shadow(color: .black.opacity(0.08), radius: 16, x: 0, y: 8)
-                .shadow(color: .black.opacity(0.06), radius: 6, x: 0, y: 3)
-                .shadow(color: .black.opacity(0.04), radius: 2, x: 0, y: 1)
+                .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
         }
         .overlay {
-            RoundedRectangle(cornerRadius: 20)
-                .stroke(Color(.systemGray5), lineWidth: 0.5)
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(Color(.systemGray6), lineWidth: 0.5)
         }
+        .rotationEffect(.degrees(rotation)) // Random tilt for organic feel
+        .offset(positionOffset) // Slight position variation for organic feel
+        .scaleEffect(isPressed ? 0.96 : 1.0)
+        .animation(.easeInOut(duration: 0.15), value: isPressed)
+        .onTapGesture {
+            // Press animation feedback
+            withAnimation(.easeInOut(duration: 0.1)) {
+                isPressed = true
+            }
+            
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                withAnimation(.easeInOut(duration: 0.1)) {
+                    isPressed = false
+                }
+            }
+            
+            // TODO: Handle card tap action
+        }
+    }
+}
+
+// MARK: - Staggered Grid Layout
+struct StaggeredCulturalCardsGrid: View {
+    let cards: [CulturalCard]
+    
+    var body: some View {
+        GeometryReader { geometry in
+            let width = geometry.size.width
+            let columnWidth = (width - 16) / 2 // Account for spacing
+            
+            HStack(alignment: .top, spacing: 16) {
+                // Left column
+                LazyVStack(spacing: 16) {
+                    ForEach(Array(leftColumnCards.enumerated()), id: \.element.id) { index, card in
+                        CulturalCardView(card: card, index: leftColumnIndex(for: index))
+                            .transition(.asymmetric(
+                                insertion: .scale.combined(with: .opacity),
+                                removal: .scale.combined(with: .opacity)
+                            ))
+                            .animation(.spring(response: 1.0, dampingFraction: 0.8).delay(Double(index) * 0.1), value: cards.count)
+                    }
+                }
+                .frame(width: columnWidth)
+                
+                // Right column
+                LazyVStack(spacing: 16) {
+                    ForEach(Array(rightColumnCards.enumerated()), id: \.element.id) { index, card in
+                        CulturalCardView(card: card, index: rightColumnIndex(for: index))
+                            .transition(.asymmetric(
+                                insertion: .scale.combined(with: .opacity),
+                                removal: .scale.combined(with: .opacity)
+                            ))
+                            .animation(.spring(response: 1.0, dampingFraction: 0.8).delay(Double(index) * 0.1), value: cards.count)
+                    }
+                }
+                .frame(width: columnWidth)
+            }
+        }
+        .frame(height: maxColumnHeight + 50) // Dynamic height based on content
+    }
+    
+    // Split cards into two columns for staggered layout
+    private var leftColumnCards: [CulturalCard] {
+        cards.enumerated().compactMap { index, card in
+            index % 2 == 0 ? card : nil
+        }
+    }
+    
+    private var rightColumnCards: [CulturalCard] {
+        cards.enumerated().compactMap { index, card in
+            index % 2 == 1 ? card : nil
+        }
+    }
+    
+    // Calculate original index for left column items
+    private func leftColumnIndex(for columnIndex: Int) -> Int {
+        return columnIndex * 2
+    }
+    
+    // Calculate original index for right column items
+    private func rightColumnIndex(for columnIndex: Int) -> Int {
+        return columnIndex * 2 + 1
+    }
+    
+    // Calculate the maximum height needed
+    private var maxColumnHeight: CGFloat {
+        let leftHeight = calculateColumnHeight(for: leftColumnCards, startingIndex: 0)
+        let rightHeight = calculateColumnHeight(for: rightColumnCards, startingIndex: 1)
+        return max(leftHeight, rightHeight)
+    }
+    
+    private func calculateColumnHeight(for cards: [CulturalCard], startingIndex: Int) -> CGFloat {
+        var totalHeight: CGFloat = 0
+        for (index, _) in cards.enumerated() {
+            let originalIndex = startingIndex + index * 2
+            let cardHeight = getCardHeight(for: originalIndex)
+            totalHeight += cardHeight + 16 // Add spacing
+        }
+        return totalHeight
+    }
+    
+    private func getCardHeight(for index: Int) -> CGFloat {
+        let heights: [CGFloat] = [140, 150, 145, 160, 155, 145, 165, 135, 150]
+        return heights[index % heights.count]
     }
 }
 
