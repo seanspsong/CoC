@@ -25,23 +25,34 @@ class VoiceRecorder: ObservableObject {
     private var audioSession = AVAudioSession.sharedInstance()
     
     init() {
+        print("🎙️ [VoiceRecorder] Initializing VoiceRecorder...")
+        print("🎙️ [VoiceRecorder] Speech recognizer available: \(speechRecognizer?.isAvailable ?? false)")
+        print("🎙️ [VoiceRecorder] Speech recognizer locale: \(speechRecognizer?.locale.identifier ?? "unknown")")
         requestPermissions()
     }
     
     // MARK: - Permission Management
     func requestPermissions() {
+        print("🎙️ [VoiceRecorder] Requesting permissions...")
+        
         // Request speech recognition permission
         SFSpeechRecognizer.requestAuthorization { [weak self] speechStatus in
+            print("🎙️ [VoiceRecorder] Speech recognition permission status: \(speechStatus.rawValue)")
             guard let self = self else { return }
             
             // Request microphone permission
-            self.audioSession.requestRecordPermission { [weak self] micStatus in
+                            AVAudioApplication.requestRecordPermission { [weak self] micStatus in
+                print("🎙️ [VoiceRecorder] Microphone permission status: \(micStatus)")
                 Task { @MainActor in
                     guard let self = self else { return }
                     
                     self.hasPermission = speechStatus == .authorized && micStatus
+                    print("🎙️ [VoiceRecorder] Final permissions - hasPermission: \(self.hasPermission)")
+                    
                     if !self.hasPermission {
-                        self.errorMessage = "Please enable microphone and speech recognition permissions in Settings to use voice features."
+                        let error = "Please enable microphone and speech recognition permissions in Settings to use voice features."
+                        print("❌ [VoiceRecorder] Permission denied: \(error)")
+                        self.errorMessage = error
                     }
                 }
             }
@@ -50,58 +61,128 @@ class VoiceRecorder: ObservableObject {
     
     // MARK: - Recording Control
     func startRecording() {
+        print("🎙️ [VoiceRecorder] Starting recording...")
+        print("🎙️ [VoiceRecorder] Has permission: \(hasPermission)")
+        print("🎙️ [VoiceRecorder] Currently recording: \(isRecording)")
+        
         guard hasPermission else {
-            errorMessage = "Missing permissions for voice recording"
+            let error = "Missing permissions for voice recording"
+            print("❌ [VoiceRecorder] Permission check failed: \(error)")
+            errorMessage = error
+            return
+        }
+        
+        // Prevent multiple simultaneous recordings
+        if isRecording {
+            print("⚠️ [VoiceRecorder] Already recording, ignoring start request")
             return
         }
         
         // Reset previous session
-        if audioEngine.isRunning {
+        if audioEngine.isRunning || recognitionTask != nil {
+            print("🎙️ [VoiceRecorder] Cleaning up previous session...")
             stopRecording()
+            // Wait a moment for cleanup to complete
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                self.performStartRecording()
+            }
+            return
         }
         
+        performStartRecording()
+    }
+    
+    private func performStartRecording() {
+        print("🎙️ [VoiceRecorder] Performing actual recording start...")
+        
+        // Clear any previous error messages
+        errorMessage = nil
+        transcribedText = ""
+        
         do {
+            print("🎙️ [VoiceRecorder] Setting up audio session...")
             try setupAudioSession()
+            
+            print("🎙️ [VoiceRecorder] Starting speech recognition...")
             try startSpeechRecognition()
+            
             isRecording = true
             errorMessage = nil
+            print("✅ [VoiceRecorder] Recording started successfully")
         } catch {
-            errorMessage = "Failed to start recording: \(error.localizedDescription)"
+            let errorMsg = "Failed to start recording: \(error.localizedDescription)"
+            print("❌ [VoiceRecorder] Start recording failed: \(errorMsg)")
+            errorMessage = errorMsg
         }
     }
     
     func stopRecording() {
-        audioEngine.stop()
-        audioEngine.inputNode.removeTap(onBus: 0)
+        print("🎙️ [VoiceRecorder] Stopping recording...")
+        print("🎙️ [VoiceRecorder] Audio engine running: \(audioEngine.isRunning)")
+        print("🎙️ [VoiceRecorder] Current transcribed text: '\(transcribedText)'")
         
-        recognitionRequest?.endAudio()
-        recognitionRequest = nil
-        recognitionTask?.cancel()
-        recognitionTask = nil
-        
+        // Set recording state to false first to prevent error handling during cleanup
         isRecording = false
+        
+        // Stop audio engine first
+        if audioEngine.isRunning {
+            print("🎙️ [VoiceRecorder] Stopping audio engine...")
+            audioEngine.stop()
+            audioEngine.inputNode.removeTap(onBus: 0)
+        }
+        
+        // End recognition request gracefully
+        if let request = recognitionRequest {
+            print("🎙️ [VoiceRecorder] Ending recognition request...")
+            request.endAudio()
+            recognitionRequest = nil
+        }
+        
+        // Cancel recognition task with a small delay to allow final results
+        if let task = recognitionTask {
+            print("🎙️ [VoiceRecorder] Canceling recognition task...")
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                task.cancel()
+            }
+            recognitionTask = nil
+        }
         
         // Clear audio levels
         audioLevels = Array(repeating: 0.0, count: 20)
+        
+        print("✅ [VoiceRecorder] Recording stopped successfully")
+        print("🎙️ [VoiceRecorder] Final transcribed text: '\(transcribedText)'")
     }
     
     // MARK: - Audio Session Setup
     private func setupAudioSession() throws {
+        print("🎙️ [VoiceRecorder] Setting up audio session...")
+        print("🎙️ [VoiceRecorder] Current audio session category: \(audioSession.category)")
+        
         try audioSession.setCategory(.record, mode: .measurement, options: .duckOthers)
+        print("🎙️ [VoiceRecorder] Audio session category set to: \(audioSession.category)")
+        
         try audioSession.setActive(true, options: .notifyOthersOnDeactivation)
+        print("✅ [VoiceRecorder] Audio session activated successfully")
     }
     
     // MARK: - Speech Recognition
     private func startSpeechRecognition() throws {
+        print("🎙️ [VoiceRecorder] Starting speech recognition...")
+        
         let inputNode = audioEngine.inputNode
+        print("🎙️ [VoiceRecorder] Audio input node: \(inputNode)")
+        print("🎙️ [VoiceRecorder] Input format: \(inputNode.outputFormat(forBus: 0))")
         
         // Create recognition request
         recognitionRequest = SFSpeechAudioBufferRecognitionRequest()
         guard let recognitionRequest = recognitionRequest else {
+            print("❌ [VoiceRecorder] Failed to create recognition request")
             throw RecordingError.failedToCreateRequest
         }
         
         recognitionRequest.shouldReportPartialResults = true
+        print("🎙️ [VoiceRecorder] Recognition request created with partial results enabled")
         
         // Start recognition task
         recognitionTask = speechRecognizer?.recognitionTask(with: recognitionRequest) { [weak self] result, error in
@@ -109,18 +190,57 @@ class VoiceRecorder: ObservableObject {
                 guard let self = self else { return }
                 
                 if let result = result {
-                    self.transcribedText = result.bestTranscription.formattedString
+                    let newText = result.bestTranscription.formattedString
+                    let confidence = result.bestTranscription.segments.last?.confidence ?? 0.0
+                    
+                    print("🎙️ [VoiceRecorder] Speech recognition result: '\(newText)' (confidence: \(confidence))")
+                    print("🎙️ [VoiceRecorder] Is final result: \(result.isFinal)")
+                    
+                    self.transcribedText = newText
+                    
+                    if result.isFinal {
+                        print("✅ [VoiceRecorder] Final speech recognition result: '\(newText)'")
+                    }
                 }
                 
                 if let error = error {
-                    self.errorMessage = "Speech recognition error: \(error.localizedDescription)"
-                    self.stopRecording()
+                    let nsError = error as NSError
+                    let errorCode = nsError.code
+                    let errorDomain = nsError.domain
+                    
+                    print("❌ [VoiceRecorder] Speech recognition error - Domain: \(errorDomain), Code: \(errorCode)")
+                    print("❌ [VoiceRecorder] Error details: \(error)")
+                    
+                    // Handle specific error codes
+                    if errorDomain == "kLSRErrorDomain" && errorCode == 301 {
+                        print("🎙️ [VoiceRecorder] Recognition was canceled (Code 301) - this is normal when stopping recording")
+                        // Don't treat cancellation as an error if we're already stopping
+                        if self.isRecording {
+                            print("⚠️ [VoiceRecorder] Unexpected cancellation during recording - performing cleanup")
+                            self.forceCleanup()
+                            let errorMsg = "Speech recognition was interrupted. Please try again."
+                            self.errorMessage = errorMsg
+                        }
+                    } else if errorDomain == "kLSRErrorDomain" && errorCode == 203 {
+                        print("⚠️ [VoiceRecorder] Speech recognition unavailable - trying recovery")
+                        self.forceCleanup()
+                        let errorMsg = "Speech recognition temporarily unavailable. Please try again."
+                        self.errorMessage = errorMsg
+                    } else {
+                        let errorMsg = "Speech recognition error: \(error.localizedDescription)"
+                        self.errorMessage = errorMsg
+                        self.stopRecording()
+                    }
                 }
             }
         }
         
+        print("🎙️ [VoiceRecorder] Recognition task started")
+        
         // Setup audio tap for waveform visualization and speech recognition
         let recordingFormat = inputNode.outputFormat(forBus: 0)
+        print("🎙️ [VoiceRecorder] Installing audio tap with buffer size: 1024")
+        
         inputNode.installTap(onBus: 0, bufferSize: 1024, format: recordingFormat) { [weak self] buffer, _ in
             // Send buffer to speech recognition
             recognitionRequest.append(buffer)
@@ -132,17 +252,34 @@ class VoiceRecorder: ObservableObject {
         }
         
         // Start audio engine
+        print("🎙️ [VoiceRecorder] Preparing and starting audio engine...")
         audioEngine.prepare()
         try audioEngine.start()
+        print("✅ [VoiceRecorder] Audio engine started successfully")
     }
     
     // MARK: - Audio Level Processing
     private func processAudioBuffer(_ buffer: AVAudioPCMBuffer) {
-        guard let channelData = buffer.floatChannelData?[0] else { return }
+        guard let channelData = buffer.floatChannelData?[0] else { 
+            print("⚠️ [VoiceRecorder] No channel data in audio buffer")
+            return 
+        }
         
         let frameLength = Int(buffer.frameLength)
         let barsCount = audioLevels.count
         let samplesPerBar = frameLength / barsCount
+        
+        // Calculate overall audio level for debugging
+        var totalSum: Float = 0.0
+        for i in 0..<frameLength {
+            totalSum += abs(channelData[i])
+        }
+        let overallLevel = totalSum / Float(frameLength)
+        
+        // Only log periodically to avoid spam (every ~30 buffers)
+        if Int.random(in: 0..<30) == 0 {
+            print("🎙️ [VoiceRecorder] Audio buffer - Frame length: \(frameLength), Overall level: \(String(format: "%.4f", overallLevel))")
+        }
         
         var newLevels: [Float] = []
         
@@ -161,15 +298,53 @@ class VoiceRecorder: ObservableObject {
         }
         
         audioLevels = newLevels
+        
+        // Log significant audio activity
+        let maxLevel = newLevels.max() ?? 0.0
+        if maxLevel > 0.3 && Int.random(in: 0..<20) == 0 {
+            print("🎙️ [VoiceRecorder] High audio activity detected - Max level: \(String(format: "%.2f", maxLevel))")
+        }
     }
     
     // MARK: - Cleanup
-    deinit {
+    private func forceCleanup() {
+        print("🎙️ [VoiceRecorder] Force cleanup of all recording resources...")
+        
+        // Force stop all components
+        isRecording = false
+        
         if audioEngine.isRunning {
+            audioEngine.stop()
+        }
+        
+        // Safely remove tap if it exists
+        if audioEngine.inputNode.numberOfInputs > 0 {
+            audioEngine.inputNode.removeTap(onBus: 0)
+        }
+        
+        recognitionRequest?.endAudio()
+        recognitionRequest = nil
+        
+        recognitionTask?.cancel()
+        recognitionTask = nil
+        
+        audioLevels = Array(repeating: 0.0, count: 20)
+        
+        print("✅ [VoiceRecorder] Force cleanup completed")
+    }
+    
+    deinit {
+        print("🎙️ [VoiceRecorder] Deinitializing VoiceRecorder...")
+        
+        if audioEngine.isRunning {
+            print("🎙️ [VoiceRecorder] Cleaning up running audio engine...")
             audioEngine.stop()
             audioEngine.inputNode.removeTap(onBus: 0)
             recognitionRequest?.endAudio()
             recognitionTask?.cancel()
+            print("✅ [VoiceRecorder] Cleanup completed")
+        } else {
+            print("🎙️ [VoiceRecorder] Audio engine not running, no cleanup needed")
         }
     }
 }

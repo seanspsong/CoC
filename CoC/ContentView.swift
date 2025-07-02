@@ -621,17 +621,73 @@ struct EmptyCardWithMicrophoneView: View {
             // Recording Interface
             VStack(spacing: 20) {
                 if recordingState == .recording {
-                    // Waveform visualization during recording
-                    WaveformVisualizationView(
-                        audioLevels: voiceRecorder.audioLevels,
-                        isAnimating: voiceRecorder.isRecording
-                    )
-                    .frame(height: 60)
-                    .padding(.horizontal, 24)
-                    
-                    Text("Listening...")
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
+                    // Live transcribed text display
+                    VStack(spacing: 16) {
+                        // Waveform visualization during recording
+                        WaveformVisualizationView(
+                            audioLevels: voiceRecorder.audioLevels,
+                            isAnimating: voiceRecorder.isRecording
+                        )
+                        .frame(height: 40)
+                        .padding(.horizontal, 24)
+                        
+                        // Live transcribed text
+                        ScrollViewReader { proxy in
+                            ScrollView {
+                                VStack(alignment: .leading, spacing: 8) {
+                                    HStack {
+                                        Text("What you're saying:")
+                                            .font(.caption)
+                                            .foregroundColor(.secondary)
+                                            .textCase(.uppercase)
+                                            .tracking(0.5)
+                                        
+                                        Spacer()
+                                        
+                                        // Real-time indicator
+                                        if !voiceRecorder.transcribedText.isEmpty {
+                                            HStack(spacing: 4) {
+                                                Circle()
+                                                    .fill(Color.cocPurple)
+                                                    .frame(width: 6, height: 6)
+                                                    .opacity(0.6)
+                                                    .scaleEffect(1.2)
+                                                    .animation(.easeInOut(duration: 0.8).repeatForever(autoreverses: true), value: voiceRecorder.isRecording)
+                                                Text("LIVE")
+                                                    .font(.caption2)
+                                                    .fontWeight(.bold)
+                                                    .foregroundColor(.cocPurple)
+                                            }
+                                        }
+                                    }
+                                    
+                                    Text(voiceRecorder.transcribedText.isEmpty ? "Start speaking..." : voiceRecorder.transcribedText)
+                                        .font(.body)
+                                        .foregroundColor(voiceRecorder.transcribedText.isEmpty ? .secondary : .primary)
+                                        .multilineTextAlignment(.leading)
+                                        .frame(maxWidth: .infinity, alignment: .leading)
+                                        .padding(.horizontal, 16)
+                                        .padding(.vertical, 12)
+                                        .background(Color(.systemGray6))
+                                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                                        .animation(.easeInOut(duration: 0.2), value: voiceRecorder.transcribedText)
+                                        .id("transcribedText")
+                                }
+                            }
+                            .frame(maxHeight: 120)
+                            .padding(.horizontal, 24)
+                            .onChange(of: voiceRecorder.transcribedText) { _, _ in
+                                withAnimation(.easeOut(duration: 0.3)) {
+                                    proxy.scrollTo("transcribedText", anchor: .bottom)
+                                }
+                            }
+                        }
+                        
+                        Text("Listening...")
+                            .font(.caption)
+                            .foregroundColor(.cocPurple)
+                            .fontWeight(.medium)
+                    }
                     
                     // Stop Recording Button
                     Button(action: {
@@ -695,11 +751,11 @@ struct EmptyCardWithMicrophoneView: View {
                     }
                 }
             }
-            .frame(minHeight: 120)
+            .frame(minHeight: recordingState == .recording ? 200 : 120)
             
-            Spacer()
+            Spacer(minLength: recordingState == .recording ? 10 : 0)
         }
-        .frame(minHeight: 300)
+        .frame(minHeight: recordingState == .recording ? 400 : 300)
     }
 }
 
