@@ -267,11 +267,11 @@ A log to track the development process, vibes, achievements, and lessons learned
 ---
 
 ## Project Status
-🎯 **Current State**: Fully functional cultural learning app with optimized bilingual display format, enhanced TTS pronunciation focused on local language learning, immersive full-screen card viewing experience, and comprehensive multilingual support
+🎯 **Current State**: Fully functional cultural learning app with separate bilingual display variables, enhanced TTS pronunciation focused on local language learning, immersive full-screen card viewing experience, and comprehensive multilingual support
 📱 **Platform**: iOS (SwiftUI, iOS 17.0+)
 🏗️ **Architecture**: MVVM with AI-powered voice processing, comprehensive error handling, multilingual localization system, and focused text-to-speech integration
-🌟 **Key Features**: Enhanced bilingual format (English\nLocal), focused TTS pronunciation (local language only), comprehensive Name Card localization (Japanese, German, Chinese, Korean), expandable cultural cards (90% screen height), scrollable content with proper clipping, live transcription display, voice-to-card generation, purple color theme (#8A2BE2), professional card design
-✨ **Recent Enhancement**: Optimized bilingual name format displaying English first, then local language, with speaker button pronouncing only the local language text for authentic pronunciation learning (尊敬, Respekt, 尊重, 존경) creating focused language learning experience
+🌟 **Key Features**: Separate bilingual variables (nameCardApp/nameCardLocal), focused TTS pronunciation (local language only), comprehensive Name Card localization (Japanese, German, Chinese, Korean), expandable cultural cards (90% screen height), scrollable content with proper clipping, live transcription display, voice-to-card generation, purple color theme (#8A2BE2), professional card design
+✨ **Recent Enhancement**: Implemented separate variables for bilingual display system, fixing the literal "\n" display issue by using nameCardApp and nameCardLocal fields for proper two-line display and targeted TTS pronunciation
 
 ## Next Steps
 - [x] Implement consistent purple color theme across the app

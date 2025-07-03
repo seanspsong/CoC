@@ -40,7 +40,11 @@ struct ContentView: View {
                         // Choose view based on whether card is AI-generated
                         if selectedCard.isAIGenerated {
                             // Use AI-generated card view for structured content
-                            GeneratedCardContentView(card: selectedCard, destination: selectedDestination)
+                            GeneratedCardContentView(card: selectedCard, destination: selectedDestination, onClose: {
+                                withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) {
+                                    self.selectedCard = nil
+                                }
+                            })
                                 .background {
                                     RoundedRectangle(cornerRadius: 20)
                                         .fill(Color(.systemBackground))
@@ -562,6 +566,26 @@ struct VoiceRecordingCardView: View {
             .padding(.horizontal, 20)
             .scaleEffect(showingGeneratedCard ? 1.0 : 0.9)
             .animation(.spring(response: 0.6, dampingFraction: 0.8), value: showingGeneratedCard)
+            
+            // Close button positioned at top right corner
+            VStack {
+                HStack {
+                    Spacer()
+                    Button(action: {
+                        onCancel()
+                    }) {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundColor(.white)
+                            .frame(width: 32, height: 32)
+                            .background(Color.black.opacity(0.6))
+                            .clipShape(Circle())
+                    }
+                    .padding(.trailing, 40)
+                    .padding(.top, 20)
+                }
+                Spacer()
+            }
         }
         .onChange(of: recordingState) { oldValue, newValue in
             handleStateChange(from: oldValue, to: newValue)
@@ -783,12 +807,20 @@ struct EmptyCardWithMicrophoneView: View {
 struct GeneratedCardContentView: View {
     let card: CulturalCard
     let destination: Destination
+    let onClose: (() -> Void)?
     @State private var isExpanded = false
     @StateObject private var ttsManager = TextToSpeechManager()
     
+    init(card: CulturalCard, destination: Destination, onClose: (() -> Void)? = nil) {
+        self.card = card
+        self.destination = destination
+        self.onClose = onClose
+    }
+    
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 24) {
+        ZStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 24) {
                 // YOUR QUESTION Section
                 if let question = card.question, !question.isEmpty {
                     VStack(alignment: .leading, spacing: 8) {
@@ -955,11 +987,34 @@ struct GeneratedCardContentView: View {
             }
             .padding(.horizontal, 24)
             .padding(.vertical, 24)
+            }
+            .scrollIndicators(.hidden)
+            .frame(maxHeight: UIScreen.main.bounds.height * 0.9)
+            .fixedSize(horizontal: false, vertical: true)
+            .clipShape(RoundedRectangle(cornerRadius: 16))
+            
+            // Close button positioned at top right corner (only show if onClose is provided)
+            if let onClose = onClose {
+                VStack {
+                    HStack {
+                        Spacer()
+                        Button(action: {
+                            onClose()
+                        }) {
+                            Image(systemName: "xmark")
+                                .font(.system(size: 16, weight: .medium))
+                                .foregroundColor(.white)
+                                .frame(width: 32, height: 32)
+                                .background(Color.black.opacity(0.6))
+                                .clipShape(Circle())
+                        }
+                        .padding(.trailing, 20)
+                        .padding(.top, 20)
+                    }
+                    Spacer()
+                }
+            }
         }
-        .scrollIndicators(.hidden)
-        .frame(maxHeight: UIScreen.main.bounds.height * 0.9)
-        .fixedSize(horizontal: false, vertical: true)
-        .clipShape(RoundedRectangle(cornerRadius: 16))
     }
 }
 
