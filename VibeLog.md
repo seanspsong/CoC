@@ -384,15 +384,6 @@ A log to track the development process, vibes, achievements, and lessons learned
 
 ---
 
-## Project Status
-🎯 **Current State**: Fully functional cultural learning app with ChatGPT 4.1-powered AI generation, country-specific cultural intelligence, working bilingual display system, enhanced TTS pronunciation focused on local language learning, immersive full-screen card viewing experience, comprehensive multilingual support, improved UX with close buttons, country selection interface for destination creation, swipe-to-delete functionality, and optimally positioned floating title
-📱 **Platform**: iOS (SwiftUI, iOS 17.0+)  
-🏗️ **Architecture**: MVVM with multi-modal ChatGPT 4.1 + Vision API integration, voice/camera/photo input processing pipeline, country-specific cultural analysis system, comprehensive error handling, multilingual localization system, focused text-to-speech integration, curated country selection workflow, and professional floating UI elements
-🌟 **Key Features**: Multi-modal AI-powered cultural learning with ChatGPT 4.1 + Vision API integration, voice/camera/photo input system, country-specific image analysis, working bilingual name cards (nameCardApp/nameCardLocal), focused TTS pronunciation (local language only), comprehensive Name Card localization (Japanese, German, Chinese, Korean), expandable cultural cards (90% screen height), scrollable content with proper clipping, live transcription display, professional input selection interface, purple color theme (#8A2BE2), professional card design, close buttons on all modal interfaces, specific company founder recognition, country selection modal with 16 popular destinations, swipe-to-delete for destinations, floating title between action buttons, functional settings modal with proper dismiss functionality
-✨ **Recent Enhancement**: Major feature expansion with camera and photo album input integration using OpenAI Vision API for image-based cultural insight generation
-
----
-
 ### VL0020
 - **Time**: 19:05
 - **Date**: 2025-01-02
@@ -432,6 +423,43 @@ A log to track the development process, vibes, achievements, and lessons learned
   - 📊 **Data Flow**: Added image processing pipeline alongside text processing
 - **Files Modified**: ContentView.swift (input selection system), AICardGenerator.swift (vision API integration), added InputSelectionView, CameraView, and vision data models
 - **Status**: ✅ **COMPLETE** - Multi-modal cultural learning system with voice, camera, and photo input for AI-powered cultural insights
+
+---
+
+### VL0022
+- **Time**: 20:45
+- **Date**: 2025-01-03
+- **Vibe Summary**: UI streamlining and navigation enhancement. Removed input selection modal in favor of direct access buttons and added proper dismissal functionality to photo picker for improved user experience and reduced navigation complexity.
+- **Achievement**: 
+  - ✅ **Streamlined Input Interface**: Removed InputSelectionView modal for more direct user interaction
+  - ✅ **Direct Button Access**: Added camera (📷), microphone (🎤), and photo (🖼️) buttons directly to voice recording interface
+  - ✅ **Centered Microphone Design**: Kept microphone button prominent in center with larger size
+  - ✅ **Professional Button Styling**: Created InputActionButton component with press animations and consistent theming
+  - ✅ **Photo Picker Navigation**: Added NavigationView wrapper with "Choose Photo" title and Cancel button
+  - ✅ **Consistent Purple Theming**: Applied cocPurple color scheme to all new UI elements
+  - ✅ **Code Cleanup**: Removed unused InputSelectionView and InputOptionButton components
+  - ✅ **State Management**: Cleaned up unnecessary state variables and simplified flow
+  - ✅ **Successful Build**: All changes compiled and tested successfully
+  - ✅ **Git Repository Update**: Committed and pushed changes to GitHub with comprehensive documentation
+- **Lesson Learnt**: Reducing navigation layers significantly improves user experience and app responsiveness. Direct access to functionality is preferable to modal selections when screen space allows. Consistent theming and button styling creates professional, cohesive interfaces. Proper NavigationView implementation is essential for modal sheets to provide user escape routes. Code cleanup during feature enhancement prevents technical debt accumulation.
+- **Technical Impact**: 
+  - 🎯 **UX Simplification**: Modal selection → Direct button access
+  - 🧹 **Code Optimization**: Removed 150+ lines of unused modal code
+  - 📱 **Interface Design**: Three-button layout with centered primary action
+  - 🎨 **Visual Consistency**: Unified color theming and button animations
+  - 🚀 **Navigation Flow**: Reduced steps from 2-click to 1-click input selection
+  - ✅ **Quality Assurance**: Maintained full functionality while improving usability
+- **Files Modified**: ContentView.swift (complete interface restructuring)
+- **Status**: ✅ **COMPLETE** - Streamlined multi-modal input with enhanced photo picker navigation
+
+---
+
+## Project Status
+🎯 **Current State**: Fully functional cultural learning app with ChatGPT 4.1-powered AI generation, country-specific cultural intelligence, working bilingual display system, enhanced TTS pronunciation focused on local language learning, immersive full-screen card viewing experience, comprehensive multilingual support, improved UX with close buttons, country selection interface for destination creation, swipe-to-delete functionality, optimally positioned floating title, and streamlined multi-modal input interface with direct button access
+📱 **Platform**: iOS (SwiftUI, iOS 17.0+)  
+🏗️ **Architecture**: MVVM with multi-modal ChatGPT 4.1 + Vision API integration, voice/camera/photo input processing pipeline, country-specific cultural analysis system, comprehensive error handling, multilingual localization system, focused text-to-speech integration, curated country selection workflow, professional floating UI elements, and streamlined direct-access input interface
+🌟 **Key Features**: Multi-modal AI-powered cultural learning with ChatGPT 4.1 + Vision API integration, streamlined voice/camera/photo input interface with direct button access, country-specific image analysis, working bilingual name cards (nameCardApp/nameCardLocal), focused TTS pronunciation (local language only), comprehensive Name Card localization (Japanese, German, Chinese, Korean), expandable cultural cards (90% screen height), scrollable content with proper clipping, live transcription display, professional centered microphone button with side camera/photo access, purple color theme (#8A2BE2), professional card design, close buttons on all modal interfaces, specific company founder recognition, country selection modal with 16 popular destinations, swipe-to-delete for destinations, floating title between action buttons, functional settings modal with proper dismiss functionality, and enhanced photo picker with NavigationView and Cancel button
+✨ **Recent Enhancement**: UI streamlining with direct multi-modal input access and enhanced photo picker navigation for improved user experience
 
 ---
 
