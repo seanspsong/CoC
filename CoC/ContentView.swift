@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import PhotosUI
 
 // MARK: - Color Theme
 extension Color {
@@ -129,8 +130,13 @@ struct ContentView: View {
     @State private var selectedDestination: Destination?
     @State private var selectedCard: CulturalCard?
     @State private var showingVoiceRecording = false
+    @State private var showingInputSelection = false
+    @State private var showingImagePicker = false
+    @State private var showingCamera = false
     @State private var showingCountrySelection = false
     @State private var showingAPIKeyAlert = false
+    @State private var selectedPhotoItem: PhotosPickerItem?
+    @State private var selectedImage: UIImage?
     @StateObject private var voiceRecorder = VoiceRecorder()
     @StateObject private var aiGenerator = AICardGenerator()
     
@@ -282,6 +288,33 @@ struct ContentView: View {
         .sheet(isPresented: $showingSettings) {
             SettingsView()
         }
+        .sheet(isPresented: $showingInputSelection) {
+            InputSelectionView(
+                onVoiceSelected: {
+                    showingInputSelection = false
+                    showingVoiceRecording = true
+                },
+                onCameraSelected: {
+                    showingInputSelection = false
+                    showingCamera = true
+                },
+                onPhotoSelected: {
+                    showingInputSelection = false
+                    showingImagePicker = true
+                },
+                onCancel: {
+                    showingInputSelection = false
+                }
+            )
+        }
+        .sheet(isPresented: $showingImagePicker) {
+            PhotosPicker(selection: $selectedPhotoItem, matching: .images) {
+                Text("Select Photo")
+            }
+        }
+        .fullScreenCover(isPresented: $showingCamera) {
+            CameraView(selectedImage: $selectedImage, isPresented: $showingCamera)
+        }
         .sheet(isPresented: $showingCountrySelection) {
             CountrySelectionView { selectedCountry in
                 createDestination(for: selectedCountry)
@@ -297,6 +330,24 @@ struct ContentView: View {
             Button("Cancel", role: .cancel) { }
         } message: {
             Text("Please add your OpenAI API key in Settings to use AI-powered cultural insights.")
+        }
+        .onChange(of: selectedPhotoItem) { newItem in
+            Task {
+                if let newItem = newItem {
+                    if let data = try? await newItem.loadTransferable(type: Data.self) {
+                        if let uiImage = UIImage(data: data) {
+                            await processSelectedImage(uiImage)
+                        }
+                    }
+                }
+            }
+        }
+        .onChange(of: selectedImage) { newImage in
+            Task {
+                if let newImage = newImage {
+                    await processSelectedImage(newImage)
+                }
+            }
         }
     }
     
@@ -321,9 +372,9 @@ struct ContentView: View {
     }
     
     private func addNewCard() {
-        // Show voice recording interface for AI card generation
+        // Show input method selection
         withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) {
-            showingVoiceRecording = true
+            showingInputSelection = true
         }
     }
     
@@ -344,6 +395,217 @@ struct ContentView: View {
         if let index = dataManager.destinations.firstIndex(where: { $0.id == destination.id }) {
             dataManager.removeDestination(at: index)
             print("🗑️ Deleted destination: \(destination.name)")
+        }
+    }
+    
+    private func processSelectedImage(_ image: UIImage) async {
+        guard let selectedDestination = selectedDestination else { return }
+        
+        print("📸 [ContentView] Processing selected image...")
+        
+        do {
+            // Generate cultural card from image using AI
+            let generatedCard = try await aiGenerator.generateCulturalCardFromImage(
+                image: image,
+                destination: selectedDestination
+            )
+            
+            // Add the generated card to the destination
+            await MainActor.run {
+                addGeneratedCard(generatedCard, to: selectedDestination)
+                // Reset selected image
+                selectedImage = nil
+                selectedPhotoItem = nil
+            }
+            
+            print("✅ [ContentView] Successfully generated card from image")
+            
+        } catch {
+            print("❌ [ContentView] Failed to generate card from image: \(error)")
+            await MainActor.run {
+                if error.localizedDescription.contains("API key") {
+                    showingAPIKeyAlert = true
+                }
+                // Reset selected image
+                selectedImage = nil
+                selectedPhotoItem = nil
+            }
+        }
+    }
+}
+
+// MARK: - Input Selection View
+struct InputSelectionView: View {
+    let onVoiceSelected: () -> Void
+    let onCameraSelected: () -> Void
+    let onPhotoSelected: () -> Void
+    let onCancel: () -> Void
+    
+    var body: some View {
+        NavigationView {
+            VStack(spacing: 30) {
+                VStack(spacing: 16) {
+                    Text("Add Cultural Insight")
+                        .font(.title2)
+                        .fontWeight(.bold)
+                    
+                    Text("Choose how you'd like to capture your cultural observation")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+                }
+                .padding(.top, 40)
+                
+                VStack(spacing: 20) {
+                    // Voice Input Option
+                    InputOptionButton(
+                        icon: "🎤",
+                        title: "Voice Recording",
+                        subtitle: "Describe what you want to learn about",
+                        color: .cocPurple
+                    ) {
+                        onVoiceSelected()
+                    }
+                    
+                    // Camera Option
+                    InputOptionButton(
+                        icon: "📷",
+                        title: "Take Photo",
+                        subtitle: "Capture a cultural moment or scene",
+                        color: .blue
+                    ) {
+                        onCameraSelected()
+                    }
+                    
+                    // Photo Library Option
+                    InputOptionButton(
+                        icon: "🖼️",
+                        title: "Choose Photo",
+                        subtitle: "Select from your photo library",
+                        color: .green
+                    ) {
+                        onPhotoSelected()
+                    }
+                }
+                .padding(.horizontal, 20)
+                
+                Spacer()
+            }
+            .navigationTitle("New Insight")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Cancel") {
+                        onCancel()
+                    }
+                    .foregroundColor(.cocPurple)
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Input Option Button
+struct InputOptionButton: View {
+    let icon: String
+    let title: String
+    let subtitle: String
+    let color: Color
+    let action: () -> Void
+    @State private var isPressed = false
+    
+    var body: some View {
+        Button(action: {
+            withAnimation(.easeInOut(duration: 0.1)) {
+                isPressed = true
+            }
+            
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                withAnimation(.easeInOut(duration: 0.1)) {
+                    isPressed = false
+                }
+                action()
+            }
+        }) {
+            HStack(spacing: 16) {
+                Text(icon)
+                    .font(.system(size: 32))
+                    .frame(width: 50, height: 50)
+                    .background(color.opacity(0.1))
+                    .clipShape(Circle())
+                
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(title)
+                        .font(.headline)
+                        .fontWeight(.semibold)
+                        .foregroundColor(.primary)
+                    
+                    Text(subtitle)
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                }
+                
+                Spacer()
+                
+                Image(systemName: "chevron.right")
+                    .foregroundColor(color)
+                    .font(.system(size: 14, weight: .medium))
+            }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 16)
+            .background {
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(Color(.systemBackground))
+                    .shadow(color: .black.opacity(isPressed ? 0.15 : 0.08), radius: isPressed ? 12 : 8, x: 0, y: isPressed ? 6 : 4)
+            }
+            .overlay {
+                RoundedRectangle(cornerRadius: 16)
+                    .stroke(isPressed ? color.opacity(0.3) : Color(.systemGray5), lineWidth: isPressed ? 2.0 : 0.5)
+            }
+            .scaleEffect(isPressed ? 0.97 : 1.0)
+        }
+        .buttonStyle(PlainButtonStyle())
+    }
+}
+
+// MARK: - Camera View
+struct CameraView: UIViewControllerRepresentable {
+    @Binding var selectedImage: UIImage?
+    @Binding var isPresented: Bool
+    
+    func makeUIViewController(context: Context) -> UIImagePickerController {
+        let picker = UIImagePickerController()
+        picker.delegate = context.coordinator
+        picker.sourceType = .camera
+        picker.allowsEditing = true
+        return picker
+    }
+    
+    func updateUIViewController(_ uiViewController: UIImagePickerController, context: Context) {}
+    
+    func makeCoordinator() -> Coordinator {
+        Coordinator(self)
+    }
+    
+    class Coordinator: NSObject, UIImagePickerControllerDelegate, UINavigationControllerDelegate {
+        let parent: CameraView
+        
+        init(_ parent: CameraView) {
+            self.parent = parent
+        }
+        
+        func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey : Any]) {
+            if let editedImage = info[.editedImage] as? UIImage {
+                parent.selectedImage = editedImage
+            } else if let originalImage = info[.originalImage] as? UIImage {
+                parent.selectedImage = originalImage
+            }
+            
+            parent.isPresented = false
+        }
+        
+        func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
+            parent.isPresented = false
         }
     }
 }

@@ -7,6 +7,7 @@
 
 import Foundation
 import Combine
+import UIKit
 
 // MARK: - ChatGPT API Integration
 struct ChatGPTRequest: Codable {
@@ -719,4 +720,251 @@ extension AICardGenerator {
             return nil
         }
     }
-} 
+    
+    // MARK: - Image-based Card Generation
+    func generateCulturalCardFromImage(
+        image: UIImage,
+        destination: Destination
+    ) async throws -> CulturalCard {
+        print("📸 [AICardGenerator] ===== STARTING IMAGE-BASED GENERATION =====")
+        print("🎯 [AICardGenerator] Destination: '\(destination.name)' (Country: \(destination.country))")
+        
+        isGenerating = true
+        generationProgress = "Analyzing image..."
+        errorMessage = nil
+        
+        defer {
+            isGenerating = false
+            generationProgress = ""
+            print("🏁 [AICardGenerator] ===== IMAGE GENERATION COMPLETED =====")
+        }
+        
+        do {
+            // Convert image to base64
+            guard let imageData = image.jpegData(compressionQuality: 0.8) else {
+                throw AIGenerationError.processingFailed
+            }
+            let base64Image = imageData.base64EncodedString()
+            
+            generationProgress = "Understanding cultural context..."
+            
+            // Build prompts for image analysis
+            let systemPrompt = buildImageSystemPrompt(country: destination.country)
+            let userPrompt = "Analyze this image and provide cultural insights relevant to \(destination.country). What cultural elements, practices, or learning opportunities do you see?"
+            
+            // Generate content using ChatGPT Vision
+            let response = try await generateWithChatGPTVision(
+                systemPrompt: systemPrompt,
+                userPrompt: userPrompt,
+                base64Image: base64Image
+            )
+            
+            generationProgress = "Creating cultural card..."
+            
+            // Convert response to cultural card
+            let card = convertToCulturalCard(
+                response: response,
+                destination: destination,
+                question: "Image analysis: Cultural insights from photo"
+            )
+            
+            print("✅ [AICardGenerator] Image-based cultural card generated successfully!")
+            print("📋 [AICardGenerator] Card Title: '\(card.title)'")
+            
+            return card
+            
+        } catch {
+            let errorMsg = "Failed to generate cultural card from image: \(error.localizedDescription)"
+            print("❌ [AICardGenerator] ERROR: \(errorMsg)")
+            errorMessage = errorMsg
+            throw error
+        }
+    }
+    
+    // MARK: - Image System Prompt
+    private func buildImageSystemPrompt(country: String) -> String {
+        return """
+        You are a cultural intelligence expert specializing in \(country)'s culture, traditions, and social customs. You will analyze images and provide educational cultural insights.
+
+        COUNTRY FOCUS: \(country)
+        - Analyze visual elements that relate to \(country)'s culture
+        - Identify cultural practices, traditions, or social customs visible in the image
+        - Provide educational insights about \(country)'s cultural context
+        - Explain the significance of what you observe in relation to \(country)'s culture
+
+        IMAGE ANALYSIS GUIDELINES:
+        - Look for cultural elements: architecture, clothing, food, activities, social interactions
+        - Consider seasonal or regional aspects specific to \(country)
+        - Identify business or social customs that might be relevant
+        - Note any traditional or modern cultural elements
+
+        RESPONSE FORMAT: You must respond with a valid JSON object containing exactly these fields:
+        {
+            "title": "Descriptive title for the cultural insight observed in the image",
+            "category": "One of: Business Etiquette, Social Customs, Communication Styles, Gift Giving, Dining Etiquette, Time Management, Hierarchy, Greeting Customs",
+            "nameCard": "Key concept or cultural element in English\\nLocal language translation",
+            "keyKnowledge": ["🔸 Four practical", "🔸 knowledge points", "🔸 based on image analysis", "🔸 specific to \(country)"],
+            "culturalInsights": "Comprehensive explanation of what the image reveals about \(country)'s culture, its significance, and practical applications for international visitors"
+        }
+
+        ACCURACY: 
+        - Only describe what you can clearly observe in the image
+        - Relate observations to authentic \(country) cultural practices
+        - Provide practical, actionable cultural insights
+        - Avoid assumptions not supported by visual evidence
+        """
+    }
+    
+    // MARK: - ChatGPT Vision API Integration
+    private func generateWithChatGPTVision(
+        systemPrompt: String,
+        userPrompt: String,
+        base64Image: String
+    ) async throws -> CulturalInsightResponse {
+        print("🧠 [AICardGenerator] Calling ChatGPT Vision API...")
+        
+        guard !apiKey.isEmpty else {
+            print("❌ [AICardGenerator] OpenAI API key not configured")
+            throw AIGenerationError.apiKeyNotConfigured
+        }
+        
+        // Create the request with image
+        let messages: [ChatGPTVisionMessage] = [
+            ChatGPTVisionMessage(
+                role: "system",
+                content: [
+                    ChatGPTVisionContent(type: "text", text: systemPrompt, imageUrl: nil)
+                ]
+            ),
+            ChatGPTVisionMessage(
+                role: "user",
+                content: [
+                    ChatGPTVisionContent(type: "text", text: userPrompt, imageUrl: nil),
+                    ChatGPTVisionContent(
+                        type: "image_url",
+                        text: nil,
+                        imageUrl: ChatGPTImageUrl(url: "data:image/jpeg;base64,\(base64Image)")
+                    )
+                ]
+            )
+        ]
+        
+        // Define JSON schema for structured response
+        let jsonSchema = ChatGPTRequest.JSONSchema(
+            name: "cultural_insight",
+            schema: ChatGPTRequest.JSONSchema.Schema(
+                type: "object",
+                properties: [
+                    "title": ChatGPTRequest.JSONSchema.Schema.Property(type: "string", description: "Descriptive title for the cultural insight", items: nil),
+                    "category": ChatGPTRequest.JSONSchema.Schema.Property(type: "string", description: "Cultural category", items: nil),
+                    "nameCard": ChatGPTRequest.JSONSchema.Schema.Property(type: "string", description: "Key concept with local translation", items: nil),
+                    "keyKnowledge": ChatGPTRequest.JSONSchema.Schema.Property(type: "array", description: "Four practical knowledge points", items: ChatGPTRequest.JSONSchema.Schema.Property.ItemType(type: "string")),
+                    "culturalInsights": ChatGPTRequest.JSONSchema.Schema.Property(type: "string", description: "Comprehensive cultural explanation", items: nil)
+                ],
+                required: ["title", "category", "nameCard", "keyKnowledge", "culturalInsights"]
+            )
+        )
+        
+        let request = ChatGPTVisionRequest(
+            model: "gpt-4o-2024-11-20", // GPT-4o with vision capabilities
+            messages: messages,
+            temperature: 0.7,
+            maxTokens: 1000,
+            responseFormat: ChatGPTRequest.ResponseFormat(
+                type: "json_schema",
+                jsonSchema: jsonSchema
+            )
+        )
+        
+        // Send request
+        guard let url = URL(string: chatGPTEndpoint) else {
+            throw AIGenerationError.invalidURL
+        }
+        
+        var urlRequest = URLRequest(url: url)
+        urlRequest.httpMethod = "POST"
+        urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        urlRequest.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+        
+        do {
+            let requestData = try JSONEncoder().encode(request)
+            urlRequest.httpBody = requestData
+            
+            print("📤 [AICardGenerator] Sending vision request to ChatGPT...")
+            let (data, response) = try await URLSession.shared.data(for: urlRequest)
+            
+            guard let httpResponse = response as? HTTPURLResponse else {
+                throw AIGenerationError.invalidResponse
+            }
+            
+            print("📥 [AICardGenerator] Received vision response: \(httpResponse.statusCode)")
+            
+            guard httpResponse.statusCode == 200 else {
+                print("❌ [AICardGenerator] HTTP Error: \(httpResponse.statusCode)")
+                if let errorData = String(data: data, encoding: .utf8) {
+                    print("❌ [AICardGenerator] Error details: \(errorData)")
+                }
+                throw AIGenerationError.httpError(httpResponse.statusCode)
+            }
+            
+            // Parse response
+            let chatGPTResponse = try JSONDecoder().decode(ChatGPTResponse.self, from: data)
+            
+            guard let choice = chatGPTResponse.choices.first else {
+                throw AIGenerationError.emptyResponse
+            }
+            
+            print("📤 [AICardGenerator] VISION RESPONSE:")
+            print("--- RESPONSE START ---")
+            print(choice.message.content)
+            print("--- RESPONSE END ---")
+            
+            // Parse the JSON content
+            let responseData = choice.message.content.data(using: .utf8) ?? Data()
+            let culturalResponse = try JSONDecoder().decode(CulturalInsightResponse.self, from: responseData)
+            
+            print("✅ [AICardGenerator] Successfully parsed vision response")
+            
+            return culturalResponse
+            
+        } catch {
+            print("❌ [AICardGenerator] Vision API error: \(error)")
+            throw AIGenerationError.networkError(error.localizedDescription)
+        }
+    }
+}
+
+// MARK: - Vision API Models
+struct ChatGPTVisionRequest: Codable {
+    let model: String
+    let messages: [ChatGPTVisionMessage]
+    let temperature: Double
+    let maxTokens: Int
+    let responseFormat: ChatGPTRequest.ResponseFormat?
+    
+    enum CodingKeys: String, CodingKey {
+        case model, messages, temperature
+        case maxTokens = "max_tokens"
+        case responseFormat = "response_format"
+    }
+}
+
+struct ChatGPTVisionMessage: Codable {
+    let role: String
+    let content: [ChatGPTVisionContent]
+}
+
+struct ChatGPTVisionContent: Codable {
+    let type: String
+    let text: String?
+    let imageUrl: ChatGPTImageUrl?
+    
+    enum CodingKeys: String, CodingKey {
+        case type, text
+        case imageUrl = "image_url"
+    }
+}
+
+struct ChatGPTImageUrl: Codable {
+    let url: String
+}
