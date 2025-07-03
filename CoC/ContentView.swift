@@ -12,12 +12,124 @@ extension Color {
     static let cocPurple = Color(red: 0x8A/255, green: 0x2B/255, blue: 0xE2/255)
 }
 
+// MARK: - Country Model
+struct Country: Identifiable {
+    let id = UUID()
+    let name: String
+    let flag: String
+}
+
+extension Country {
+    static let availableCountries: [Country] = [
+        Country(name: "Japan", flag: "🇯🇵"),
+        Country(name: "Germany", flag: "🇩🇪"),
+        Country(name: "United Kingdom", flag: "🇬🇧"),
+        Country(name: "France", flag: "🇫🇷"),
+        Country(name: "Italy", flag: "🇮🇹"),
+        Country(name: "Spain", flag: "🇪🇸"),
+        Country(name: "China", flag: "🇨🇳"),
+        Country(name: "South Korea", flag: "🇰🇷"),
+        Country(name: "India", flag: "🇮🇳"),
+        Country(name: "Brazil", flag: "🇧🇷"),
+        Country(name: "Mexico", flag: "🇲🇽"),
+        Country(name: "Netherlands", flag: "🇳🇱"),
+        Country(name: "Sweden", flag: "🇸🇪"),
+        Country(name: "Switzerland", flag: "🇨🇭"),
+        Country(name: "Australia", flag: "🇦🇺"),
+        Country(name: "Canada", flag: "🇨🇦")
+    ]
+}
+
+// MARK: - Country Selection View
+struct CountrySelectionView: View {
+    let onCountrySelected: (Country) -> Void
+    let onCancel: () -> Void
+    
+    var body: some View {
+        NavigationView {
+            ScrollView {
+                LazyVGrid(columns: [
+                    GridItem(.adaptive(minimum: 150))
+                ], spacing: 16) {
+                    ForEach(Country.availableCountries) { country in
+                        CountryCardView(country: country) {
+                            onCountrySelected(country)
+                        }
+                    }
+                }
+                .padding(.horizontal, 20)
+                .padding(.top, 10)
+                .padding(.bottom, 20)
+            }
+            .navigationTitle("Select Country")
+            .navigationBarTitleDisplayMode(.large)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Cancel") {
+                        onCancel()
+                    }
+                    .foregroundColor(.cocPurple)
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Country Card View
+struct CountryCardView: View {
+    let country: Country
+    let onTap: () -> Void
+    @State private var isPressed = false
+    
+    var body: some View {
+        VStack(spacing: 12) {
+            Text(country.flag)
+                .font(.system(size: 50))
+            
+            Text(country.name)
+                .font(.headline)
+                .fontWeight(.semibold)
+                .multilineTextAlignment(.center)
+                .foregroundColor(.primary)
+        }
+        .frame(maxWidth: .infinity)
+        .frame(height: 120)
+        .background {
+            RoundedRectangle(cornerRadius: 16)
+                .fill(Color(.systemBackground))
+                .shadow(color: .black.opacity(isPressed ? 0.15 : 0.08), radius: isPressed ? 12 : 8, x: 0, y: isPressed ? 6 : 4)
+                .shadow(color: .black.opacity(isPressed ? 0.08 : 0.04), radius: isPressed ? 4 : 2, x: 0, y: 1)
+        }
+        .overlay {
+            RoundedRectangle(cornerRadius: 16)
+                .stroke(isPressed ? Color.cocPurple.opacity(0.3) : Color(.systemGray5), lineWidth: isPressed ? 2.0 : 0.5)
+        }
+        .scaleEffect(isPressed ? 0.97 : 1.0)
+        .animation(.easeInOut(duration: 0.15), value: isPressed)
+        .onTapGesture {
+            // Press animation feedback
+            withAnimation(.easeInOut(duration: 0.1)) {
+                isPressed = true
+            }
+            
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                withAnimation(.easeInOut(duration: 0.1)) {
+                    isPressed = false
+                }
+            }
+            
+            onTap()
+        }
+    }
+}
+
 struct ContentView: View {
     @State private var showingSettings = false
     @StateObject private var dataManager = DataManager()
     @State private var selectedDestination: Destination?
     @State private var selectedCard: CulturalCard?
     @State private var showingVoiceRecording = false
+    @State private var showingCountrySelection = false
     @StateObject private var voiceRecorder = VoiceRecorder()
     @StateObject private var aiGenerator = AICardGenerator()
     
@@ -145,6 +257,14 @@ struct ContentView: View {
         .sheet(isPresented: $showingSettings) {
             SettingsView()
         }
+        .sheet(isPresented: $showingCountrySelection) {
+            CountrySelectionView { selectedCountry in
+                createDestination(for: selectedCountry)
+                showingCountrySelection = false
+            } onCancel: {
+                showingCountrySelection = false
+            }
+        }
     }
     
     private func handleFloatingActionTap() {
@@ -158,9 +278,11 @@ struct ContentView: View {
     }
     
     private func addNewDestination() {
-        // TODO: Show destination creation sheet
-        // For now, create a sample destination
-        let newDestination = Destination(name: "New Destination", flag: "🌍")
+        showingCountrySelection = true
+    }
+    
+    private func createDestination(for country: Country) {
+        let newDestination = Destination(name: country.name, flag: country.flag)
         dataManager.addDestination(newDestination)
         print("Added new destination: \(newDestination.name)")
     }
@@ -830,6 +952,7 @@ struct GeneratedCardContentView: View {
                             .foregroundColor(.secondary)
                             .textCase(.uppercase)
                             .tracking(1.2)
+                        
                         
                         Text(question)
                             .font(.body)
