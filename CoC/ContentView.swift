@@ -262,7 +262,7 @@ struct DestinationDetailView: View {
                             .foregroundColor(.secondary)
                     }
                     .padding(.horizontal, 20)
-                    .padding(.top, 100) // Extra top padding for floating buttons
+                    .padding(.top, 60) // Reduced top padding to move view up
                     .padding(.bottom, 20)
                     
                     // Staggered Cultural Cards Layout (PPnotes style)
