@@ -299,9 +299,9 @@ struct ContentView: View {
     }
     
     private func createDestination(for country: Country) {
-        let newDestination = Destination(name: country.name, flag: country.flag)
+        let newDestination = Destination(name: country.name, flag: country.flag, country: country.name)
         dataManager.addDestination(newDestination)
-        print("Added new destination: \(newDestination.name)")
+        print("Added new destination: \(newDestination.name) (Country: \(newDestination.country))")
     }
     
     private func addNewCard() {
@@ -766,7 +766,7 @@ struct VoiceRecordingCardView: View {
         Task {
             do {
                 let card = try await aiGenerator.generateCulturalCard(
-                    destination: destination.name,
+                    destination: destination,
                     userQuery: voiceRecorder.transcribedText
                 )
                 

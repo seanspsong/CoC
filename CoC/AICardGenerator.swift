@@ -7,24 +7,91 @@
 
 import Foundation
 import Combine
-import FoundationModels
+
+// MARK: - ChatGPT API Integration
+struct ChatGPTRequest: Codable {
+    let model: String
+    let messages: [ChatGPTMessage]
+    let temperature: Double
+    let maxTokens: Int
+    let responseFormat: ResponseFormat?
+    
+    enum CodingKeys: String, CodingKey {
+        case model, messages, temperature
+        case maxTokens = "max_tokens"
+        case responseFormat = "response_format"
+    }
+    
+    struct ResponseFormat: Codable {
+        let type: String
+        let jsonSchema: JSONSchema?
+        
+        enum CodingKeys: String, CodingKey {
+            case type
+            case jsonSchema = "json_schema"
+        }
+    }
+    
+    struct JSONSchema: Codable {
+        let name: String
+        let schema: Schema
+        
+        struct Schema: Codable {
+            let type: String
+            let properties: [String: Property]
+            let required: [String]
+            
+            struct Property: Codable {
+                let type: String
+                let description: String
+                let items: ItemType?
+                
+                struct ItemType: Codable {
+                    let type: String
+                }
+            }
+        }
+    }
+}
+
+struct ChatGPTMessage: Codable {
+    let role: String
+    let content: String
+}
+
+struct ChatGPTResponse: Codable {
+    let choices: [Choice]
+    let usage: Usage?
+    
+    struct Choice: Codable {
+        let message: ChatGPTMessage
+        let finishReason: String?
+        
+        enum CodingKeys: String, CodingKey {
+            case message
+            case finishReason = "finish_reason"
+        }
+    }
+    
+    struct Usage: Codable {
+        let promptTokens: Int
+        let completionTokens: Int
+        let totalTokens: Int
+        
+        enum CodingKeys: String, CodingKey {
+            case promptTokens = "prompt_tokens"
+            case completionTokens = "completion_tokens"
+            case totalTokens = "total_tokens"
+        }
+    }
+}
 
 // MARK: - AI Response Structure
-@Generable
-struct CulturalInsightResponse {
-    @Guide(description: "A concise, descriptive title for the cultural insight")
+struct CulturalInsightResponse: Codable {
     let title: String
-    
-    @Guide(description: "One of: Business Etiquette, Social Customs, Communication Styles, Gift Giving, Dining Etiquette, Time Management, Hierarchy, Greeting Customs")
     let category: String
-    
-    @Guide(description: "One word/concept or full person name with local translation (e.g., 'Respect\\n尊敬', 'Hierarchy\\n階層', 'Tanaka Hiroshi\\n田中宏', 'Protocol\\n礼儀')")
     let nameCard: String
-    
-    @Guide(description: "Exactly 4 key knowledge points starting with relevant emojis", .count(4))
     let keyKnowledge: [String]
-    
-    @Guide(description: "A comprehensive cultural insight paragraph explaining the practice and cultural reasoning")
     let culturalInsights: String
 }
 
@@ -34,33 +101,30 @@ class AICardGenerator: ObservableObject {
     @Published var generationProgress: String = ""
     @Published var errorMessage: String?
     
-    // MARK: - Language Model Session
-    private let languageSession: LanguageModelSession
+    // MARK: - ChatGPT Configuration
+    private let chatGPTEndpoint = "https://api.openai.com/v1/chat/completions"
+    private let apiKey: String
+    private let model = "gpt-4o-2024-11-20" // Latest ChatGPT 4.1 model
     
     init() {
-        // Initialize the language model session with cultural intelligence instructions
-        let instructions = """
-        You are a cultural expert helping people understand local customs and practices. Provide helpful cultural insights that are accurate and respectful.
-        """
-        
-        languageSession = LanguageModelSession(instructions: instructions)
-        print("🧠 [AICardGenerator] Initialized LanguageModelSession with simplified cultural instructions")
+        // In a real app, you'd get this from a secure configuration
+        // For now, we'll use a placeholder - you'll need to add your actual API key
+        self.apiKey = ProcessInfo.processInfo.environment["OPENAI_API_KEY"] ?? "your-api-key-here"
+        print("🧠 [AICardGenerator] Initialized with ChatGPT 4.1 integration")
     }
-    
-
     
     // MARK: - Card Generation
     func generateCulturalCard(
-        destination: String,
+        destination: Destination,
         userQuery: String
     ) async throws -> CulturalCard {
-        print("🤖 [AICardGenerator] ===== STARTING CULTURE CONTENT GENERATION =====")
-        print("🎯 [AICardGenerator] Destination: '\(destination)'")
+        print("🤖 [AICardGenerator] ===== STARTING CHATGPT GENERATION =====")
+        print("🎯 [AICardGenerator] Destination: '\(destination.name)' (Country: \(destination.country))")
         print("🎤 [AICardGenerator] Voice Transcript: '\(userQuery)'")
         print("📏 [AICardGenerator] Transcript Length: \(userQuery.count) characters")
         
         isGenerating = true
-        generationProgress = "Analyzing your question..."
+        generationProgress = "Connecting to ChatGPT..."
         errorMessage = nil
         
         defer {
@@ -70,21 +134,29 @@ class AICardGenerator: ObservableObject {
         }
         
         do {
-            // Build the complete prompt
-            print("🔨 [AICardGenerator] Building AI prompt...")
-            let prompt = buildPrompt(destination: destination, query: userQuery)
+            // Build the system prompt with country context
+            print("🔨 [AICardGenerator] Building country-specific system prompt...")
+            let systemPrompt = buildSystemPrompt(country: destination.country)
+            let userPrompt = buildUserPrompt(destination: destination, query: userQuery)
             
             generationProgress = "Generating cultural insight..."
-            print("⚡ [AICardGenerator] Sending prompt to AI model...")
+            print("⚡ [AICardGenerator] Sending request to ChatGPT API...")
             
-            // Generate content using on-device model with structured response
-            let response = try await generateWithFoundationModel(prompt: prompt)
+            // Generate content using ChatGPT
+            let response = try await generateWithChatGPT(
+                systemPrompt: systemPrompt,
+                userPrompt: userPrompt
+            )
             
             generationProgress = "Processing response..."
-            print("🔍 [AICardGenerator] Converting structured response to CulturalCard...")
+            print("🔍 [AICardGenerator] Converting ChatGPT response to CulturalCard...")
             
-            // Convert structured response to cultural card
-            let card = convertToCulturalCard(response: response, destination: destination, question: userQuery)
+            // Convert response to cultural card
+            let card = convertToCulturalCard(
+                response: response,
+                destination: destination,
+                question: userQuery
+            )
             
             generationProgress = "Complete!"
             print("✅ [AICardGenerator] Cultural card generated successfully!")
@@ -102,119 +174,165 @@ class AICardGenerator: ObservableObject {
         }
     }
     
-    // MARK: - Prompt Building
-    private func buildPrompt(destination: String, query: String) -> String {
-        print("📝 [AICardGenerator] Constructing prompt for LanguageModelSession...")
-        
-        let prompt = """
-        Destination: \(destination)
+    // MARK: - System Prompt Building
+    private func buildSystemPrompt(country: String) -> String {
+        return """
+        You are a cultural intelligence expert specializing in \(country)'s business and social customs. Your role is to provide accurate, nuanced cultural insights that help international business professionals navigate \(country)'s cultural landscape successfully.
+
+        COUNTRY FOCUS: \(country)
+        - Provide insights specifically relevant to \(country)'s cultural context
+        - Include country-specific examples, practices, and social norms
+        - Consider \(country)'s unique business culture, hierarchy, and communication styles
+        - Reference \(country)'s historical and cultural background when relevant
+
+        RESPONSE FORMAT: You must respond with a valid JSON object containing exactly these fields:
+        {
+            "title": "Descriptive title for the cultural insight",
+            "category": "One of: Business Etiquette, Social Customs, Communication Styles, Gift Giving, Dining Etiquette, Time Management, Hierarchy, Greeting Customs",
+            "nameCard": "Key concept or person name in English\\nLocal language translation (e.g., 'Respect\\n尊敬')",
+            "keyKnowledge": ["🔸 Four practical", "🔸 knowledge points", "🔸 with relevant emojis", "🔸 specific to \(country)"],
+            "culturalInsights": "Comprehensive paragraph explaining the cultural practice, its significance in \(country), and practical business applications"
+        }
+
+        CULTURAL ACCURACY: 
+        - Provide authentic, researched information about \(country)
+        - Avoid stereotypes or generalizations
+        - Include practical business applications
+        - Explain the cultural reasoning behind practices
+        - Use appropriate local language translations when applicable
+        """
+    }
+    
+    // MARK: - User Prompt Building
+    private func buildUserPrompt(destination: Destination, query: String) -> String {
+        return """
+        Country: \(destination.country)
         User Question: "\(query)"
         
-        Please provide a cultural insight about \(destination) that addresses the user's question. Structure your response with:
-        1. A name card: use a full person name (given name + family name) if about specific people/roles, otherwise use one concept word. ALWAYS provide both English and local language versions separated by newline (e.g., "Respect\\n尊敬" for concepts, "Tanaka Hiroshi\\n田中宏" for names).
-        2. Four key knowledge points starting with relevant emojis
-        3. Comprehensive cultural insights paragraph
+        Please provide a cultural insight about \(destination.country) that directly addresses the user's question. Focus on practical business applications and cultural understanding specific to \(destination.country).
         """
-        
-        print("📋 [AICardGenerator] PROMPT FOR FOUNDATION MODEL:")
-        print("--- PROMPT START ---")
-        print(prompt)
-        print("--- PROMPT END ---")
-        print("📏 [AICardGenerator] Prompt Length: \(prompt.count) characters")
-        
-        return prompt
     }
     
-    // MARK: - Foundation Model Integration
-    private func generateWithFoundationModel(prompt: String) async throws -> CulturalInsightResponse {
-        print("🧠 [AICardGenerator] Calling Apple Foundation Model via LanguageModelSession...")
+    // MARK: - ChatGPT API Integration
+    private func generateWithChatGPT(
+        systemPrompt: String,
+        userPrompt: String
+    ) async throws -> CulturalInsightResponse {
+        print("🧠 [AICardGenerator] Calling ChatGPT API...")
         
-        // Check if the model is available
-        guard SystemLanguageModel.default.availability == .available else {
-            print("❌ [AICardGenerator] Foundation Model not available")
-            throw NSError(domain: "AICardGenerator", code: 1, userInfo: [
-                NSLocalizedDescriptionKey: "Apple Intelligence Foundation Model is not available on this device"
-            ])
+        guard !apiKey.isEmpty && apiKey != "your-api-key-here" else {
+            print("❌ [AICardGenerator] OpenAI API key not configured")
+            throw AIGenerationError.apiKeyNotConfigured
         }
         
-        print("✅ [AICardGenerator] Foundation Model is available")
-        print("📤 [AICardGenerator] Sending structured prompt to Foundation Model...")
+        // Create the request
+        let messages = [
+            ChatGPTMessage(role: "system", content: systemPrompt),
+            ChatGPTMessage(role: "user", content: userPrompt)
+        ]
+        
+        // Define JSON schema for structured response
+        let jsonSchema = ChatGPTRequest.JSONSchema(
+            name: "cultural_insight",
+            schema: ChatGPTRequest.JSONSchema.Schema(
+                type: "object",
+                properties: [
+                    "title": ChatGPTRequest.JSONSchema.Schema.Property(type: "string", description: "Descriptive title for the cultural insight", items: nil),
+                    "category": ChatGPTRequest.JSONSchema.Schema.Property(type: "string", description: "Cultural category", items: nil),
+                    "nameCard": ChatGPTRequest.JSONSchema.Schema.Property(type: "string", description: "Key concept with local translation", items: nil),
+                    "keyKnowledge": ChatGPTRequest.JSONSchema.Schema.Property(type: "array", description: "Four practical knowledge points", items: ChatGPTRequest.JSONSchema.Schema.Property.ItemType(type: "string")),
+                    "culturalInsights": ChatGPTRequest.JSONSchema.Schema.Property(type: "string", description: "Comprehensive cultural explanation", items: nil)
+                ],
+                required: ["title", "category", "nameCard", "keyKnowledge", "culturalInsights"]
+            )
+        )
+        
+        let request = ChatGPTRequest(
+            model: model,
+            messages: messages,
+            temperature: 0.7,
+            maxTokens: 1000,
+            responseFormat: ChatGPTRequest.ResponseFormat(
+                type: "json_schema",
+                jsonSchema: jsonSchema
+            )
+        )
+        
+        // Send request
+        guard let url = URL(string: chatGPTEndpoint) else {
+            throw AIGenerationError.invalidURL
+        }
+        
+        var urlRequest = URLRequest(url: url)
+        urlRequest.httpMethod = "POST"
+        urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        urlRequest.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
         
         do {
-            // Use guided generation to get structured response
-            let response = try await languageSession.respond(
-                to: prompt,
-                generating: CulturalInsightResponse.self
-            )
+            let requestData = try JSONEncoder().encode(request)
+            urlRequest.httpBody = requestData
             
-            print("📤 [AICardGenerator] STRUCTURED AI RESPONSE RECEIVED:")
-            print("--- AI RESPONSE START ---")
-            print("Title: \(response.content.title)")
-            print("Category: \(response.content.category)")
-            print("Name Card: \(response.content.nameCard)")
-            print("Key Knowledge: \(response.content.keyKnowledge)")
-            print("Cultural Insights: \(response.content.culturalInsights)")
-            print("--- AI RESPONSE END ---")
+            print("📤 [AICardGenerator] Sending request to ChatGPT...")
+            let (data, response) = try await URLSession.shared.data(for: urlRequest)
             
-            return response.content
+            guard let httpResponse = response as? HTTPURLResponse else {
+                throw AIGenerationError.invalidResponse
+            }
+            
+            print("📥 [AICardGenerator] Received response: \(httpResponse.statusCode)")
+            
+            guard httpResponse.statusCode == 200 else {
+                print("❌ [AICardGenerator] HTTP Error: \(httpResponse.statusCode)")
+                if let errorData = String(data: data, encoding: .utf8) {
+                    print("❌ [AICardGenerator] Error details: \(errorData)")
+                }
+                throw AIGenerationError.httpError(httpResponse.statusCode)
+            }
+            
+            // Parse response
+            let chatGPTResponse = try JSONDecoder().decode(ChatGPTResponse.self, from: data)
+            
+            guard let choice = chatGPTResponse.choices.first else {
+                throw AIGenerationError.emptyResponse
+            }
+            
+            print("📤 [AICardGenerator] CHATGPT RESPONSE:")
+            print("--- RESPONSE START ---")
+            print(choice.message.content)
+            print("--- RESPONSE END ---")
+            
+            // Parse the JSON content
+            let responseData = choice.message.content.data(using: .utf8) ?? Data()
+            let culturalResponse = try JSONDecoder().decode(CulturalInsightResponse.self, from: responseData)
+            
+            print("✅ [AICardGenerator] Successfully parsed structured response")
+            print("📋 [AICardGenerator] Response details:")
+            print("   - Title: '\(culturalResponse.title)'")
+            print("   - Category: '\(culturalResponse.category)'")
+            print("   - Name Card: '\(culturalResponse.nameCard)'")
+            print("   - Key Knowledge: \(culturalResponse.keyKnowledge.count) items")
+            print("   - Cultural Insights: \(culturalResponse.culturalInsights.count) characters")
+            
+            return culturalResponse
             
         } catch {
-            print("❌ [AICardGenerator] Foundation Model error: \(error)")
-            print("🔄 [AICardGenerator] Falling back to mock response...")
-            
-            // Fallback to mock response if Foundation Model fails
-            let mockResponse = try await generateMockResponse(for: prompt)
-            let destination = extractDestination(from: prompt)
-            return try parseMockResponseToStructured(mockResponse, destination: destination)
+            print("❌ [AICardGenerator] ChatGPT API error: \(error)")
+            throw AIGenerationError.networkError(error)
         }
-    }
-    
-    // MARK: - Mock Response Generator (for development)
-    private func generateMockResponse(for prompt: String) async throws -> String {
-        print("🎭 [AICardGenerator] Generating mock AI response...")
-        
-        // Simulate network delay
-        print("⏱️ [AICardGenerator] Simulating AI processing delay (2 seconds)...")
-        try await Task.sleep(nanoseconds: 2_000_000_000) // 2 seconds
-        
-        // Analyze the prompt to generate contextual response
-        let destination = extractDestination(from: prompt)
-        let query = extractQuery(from: prompt)
-        
-        print("🔍 [AICardGenerator] Extracted from prompt:")
-        print("   - Destination: '\(destination)'")
-        print("   - Query: '\(query)'")
-        
-        // Generate appropriate mock response based on query content
-        let responseType: String
-        let response: String
-        
-        if query.lowercased().contains("greet") || query.lowercased().contains("hello") {
-            responseType = "Greeting Response"
-            response = generateGreetingResponse(for: destination)
-        } else if query.lowercased().contains("meeting") || query.lowercased().contains("business") {
-            responseType = "Meeting Response"
-            response = generateMeetingResponse(for: destination)
-        } else if query.lowercased().contains("food") || query.lowercased().contains("eat") || query.lowercased().contains("dining") {
-            responseType = "Dining Response"
-            response = generateDiningResponse(for: destination)
-        } else {
-            responseType = "General Response"
-            response = generateGeneralResponse(for: destination, query: query)
-        }
-        
-        print("🎯 [AICardGenerator] Selected response type: \(responseType)")
-        return response
     }
     
     // MARK: - Response Conversion
-    private func convertToCulturalCard(response: CulturalInsightResponse, destination: String, question: String) -> CulturalCard {
-        print("🔄 [AICardGenerator] Converting structured response to CulturalCard...")
+    private func convertToCulturalCard(
+        response: CulturalInsightResponse,
+        destination: Destination,
+        question: String
+    ) -> CulturalCard {
+        print("🔄 [AICardGenerator] Converting ChatGPT response to CulturalCard...")
         
         // Map category string to enum
         let category = mapStringToCategory(response.category)
         
-        // Parse the nameCard if it contains both app and local language
+        // Parse the nameCard for bilingual display
         var nameCardApp: String? = nil
         var nameCardLocal: String? = nil
         
@@ -225,28 +343,14 @@ class AICardGenerator: ObservableObject {
         print("🔍 [AICardGenerator] Split into \(lines.count) lines: \(lines)")
         
         if lines.count >= 2 {
-            nameCardApp = lines[0]
-            nameCardLocal = lines[1]
+            nameCardApp = lines[0].trimmingCharacters(in: .whitespacesAndNewlines)
+            nameCardLocal = lines[1].trimmingCharacters(in: .whitespacesAndNewlines)
             print("🔍 [AICardGenerator] Set nameCardApp: '\(nameCardApp!)'")
             print("🔍 [AICardGenerator] Set nameCardLocal: '\(nameCardLocal!)'")
         } else {
-            // If we only got one line, try to get localized version for concepts
-            nameCardApp = nameCard
-            print("🔍 [AICardGenerator] Single line, trying to get localized version for: '\(nameCard)'")
-            
-            // Try to get localized version if it's a concept
-            let localizedVersion = getLocalizedNameCard(concept: nameCard, destination: destination)
-            print("🔍 [AICardGenerator] Localized version: '\(localizedVersion)'")
-            
-            let localizedLines = localizedVersion.components(separatedBy: "\n")
-            if localizedLines.count >= 2 {
-                nameCardApp = localizedLines[0]
-                nameCardLocal = localizedLines[1]
-                print("🔍 [AICardGenerator] Used localized - App: '\(nameCardApp!)', Local: '\(nameCardLocal!)'")
-            } else {
-                nameCardLocal = nil
-                print("🔍 [AICardGenerator] No localized version found, nameCardLocal = nil")
-            }
+            nameCardApp = nameCard.trimmingCharacters(in: .whitespacesAndNewlines)
+            nameCardLocal = nil
+            print("🔍 [AICardGenerator] Single line nameCard: '\(nameCardApp!)'")
         }
         
         let card = CulturalCard(
@@ -256,604 +360,73 @@ class AICardGenerator: ObservableObject {
             nameCardLocal: nameCardLocal,
             keyKnowledge: response.keyKnowledge,
             culturalInsights: response.culturalInsights,
-            destination: destination,
+            destination: destination.country, // Use country instead of name
             question: question
         )
         
         print("✅ [AICardGenerator] Successfully converted to CulturalCard")
         print("🔍 [AICardGenerator] Final card details:")
         print("   - Title: '\(card.title)'")
-        print("   - Is AI Generated: \(card.isAIGenerated)")
+        print("   - Country: '\(card.destination ?? "nil")'")
         print("   - Name Card App: '\(card.nameCardApp ?? "nil")'")
         print("   - Name Card Local: '\(card.nameCardLocal ?? "nil")'")
-        print("   - Key Knowledge: \(card.keyKnowledge?.count ?? 0) items: \(card.keyKnowledge ?? [])")
-        print("   - Cultural Insights: '\(card.culturalInsights ?? "nil")'")
-        print("   - Question: '\(card.question ?? "nil")'")
-        print("   - Content (legacy): '\(card.content.prefix(100))...'")
-        print("   - Category: \(card.category?.title ?? "nil")")
-        print("📋 [AICardGenerator] Card Structure:")
-        print("   - Name Card: '\(response.nameCard)'")
-        print("   - Key Knowledge: \(response.keyKnowledge.count) points")
-        print("   - Cultural Insights: \(response.culturalInsights.count) characters")
+        print("   - Key Knowledge: \(card.keyKnowledge?.count ?? 0) items")
+        print("   - Cultural Insights: \(card.culturalInsights?.count ?? 0) characters")
+        
         return card
     }
     
-    // MARK: - Mock Response Fallback
-    private func parseMockResponseToStructured(_ mockResponse: String, destination: String) throws -> CulturalInsightResponse {
-        print("🔧 [AICardGenerator] Parsing mock response to structured format...")
-        print("📝 [AICardGenerator] Mock response content:")
-        print("--- MOCK RESPONSE START ---")
-        print(mockResponse)
-        print("--- MOCK RESPONSE END ---")
-        
-        // Try to parse JSON response from mock
-        if let jsonData = mockResponse.data(using: .utf8) {
-            do {
-                let parsed = try JSONDecoder().decode(AIResponse.self, from: jsonData)
-                
-                print("✅ [AICardGenerator] Successfully parsed mock JSON response!")
-                print("📋 [AICardGenerator] Parsed data:")
-                print("   - Title: '\(parsed.title)'")
-                print("   - Category: '\(parsed.category)'")
-                print("   - Name Card: '\(parsed.nameCard ?? "nil")'")
-                print("   - Key Knowledge: \(parsed.keyKnowledge?.count ?? 0) items")
-                print("   - Cultural Insights: \(parsed.culturalInsights?.count ?? 0) chars")
-                
-                return CulturalInsightResponse(
-                    title: parsed.title,
-                    category: parsed.category,
-                    nameCard: parsed.nameCard ?? extractNameCard(from: parsed.title, destination: destination),
-                    keyKnowledge: parsed.keyKnowledge ?? parsed.practicalTips,
-                    culturalInsights: parsed.culturalInsights ?? parsed.insight
-                )
-            } catch {
-                print("❌ [AICardGenerator] JSON parsing failed with error: \(error)")
-                print("🔍 [AICardGenerator] JSON Data Length: \(jsonData.count) bytes")
-                print("🔄 [AICardGenerator] Attempting manual content extraction...")
-                
-                // Manual parsing fallback - extract content from JSON string
-                return extractContentFromJSONString(mockResponse, destination: destination)
-            }
-        }
-        
-        print("❌ [AICardGenerator] Could not convert mock response to JSON data")
-        print("🔄 [AICardGenerator] Using raw content as cultural insights")
-        
-        // Final fallback - use the raw response as cultural insights
-        return CulturalInsightResponse(
-            title: "Cultural Business Insight",
-            category: "Social Customs & Relationship Building",
-            nameCard: getLocalizedNameCard(concept: "culture", destination: destination),
-            keyKnowledge: [
-                "📚 Research local customs before important interactions",
-                "❤️ Show genuine interest in cultural traditions",
-                "🚫 Avoid assumptions based on stereotypes",
-                "👀 Pay attention to subtle social cues"
-            ],
-            culturalInsights: mockResponse
-        )
-    }
-    
-    // MARK: - Legacy Response Parsing (for compatibility)
-    private func parseToCulturalCard(response: String, destination: String, question: String) throws -> CulturalCard {
-        print("🔧 [AICardGenerator] Parsing AI response to CulturalCard...")
-        
-        // Try to parse JSON response
-        if let jsonData = response.data(using: .utf8) {
-            print("✅ [AICardGenerator] AI response converted to JSON data successfully")
-            
-            do {
-                print("🔍 [AICardGenerator] Attempting JSON parsing...")
-                let parsed = try JSONDecoder().decode(AIResponse.self, from: jsonData)
-                
-                print("✅ [AICardGenerator] JSON parsed successfully!")
-                print("📋 [AICardGenerator] Parsed content:")
-                print("   - Title: '\(parsed.title)'")
-                print("   - Category: '\(parsed.category)'")
-                print("   - Insight Length: \(parsed.insight.count) characters")
-                print("   - Practical Tips Count: \(parsed.practicalTips.count)")
-                
-                // Map category string to enum
-                let category = mapStringToCategory(parsed.category)
-                print("🏷️ [AICardGenerator] Mapped category '\(parsed.category)' to: \(category)")
-                
-                // Parse the nameCard if it contains both app and local language
-                let nameCardString = parsed.nameCard ?? extractNameCard(from: parsed.title, destination: destination)
-                let lines = nameCardString.components(separatedBy: "\n")
-                let nameCardApp = lines.count >= 2 ? lines[0] : nameCardString
-                let nameCardLocal = lines.count >= 2 ? lines[1] : nil
-                
-                let card = CulturalCard(
-                    title: parsed.title,
-                    category: category,
-                    nameCardApp: nameCardApp,
-                    nameCardLocal: nameCardLocal,
-                    keyKnowledge: parsed.keyKnowledge ?? parsed.practicalTips,
-                    culturalInsights: parsed.culturalInsights ?? parsed.insight,
-                    destination: destination,
-                    question: question
-                )
-                
-                print("✅ [AICardGenerator] CulturalCard created successfully!")
-                return card
-                
-            } catch {
-                print("❌ [AICardGenerator] JSON parsing failed: \(error)")
-                print("🔄 [AICardGenerator] Falling back to manual parsing...")
-                // If JSON parsing fails, try to extract content manually
-                return try parseManualResponse(response: response, destination: destination, question: question)
-            }
-        }
-        
-        print("❌ [AICardGenerator] Could not convert response to JSON data")
-        throw AIGenerationError.invalidResponse
-    }
-    
-    // MARK: - Manual Content Extraction
-    private func extractContentFromJSONString(_ jsonString: String, destination: String) -> CulturalInsightResponse {
-        print("🔧 [AICardGenerator] Extracting content manually from JSON string...")
-        
-        // Extract title
-        let title = extractValue(from: jsonString, key: "title") ?? "Cultural Business Insight"
-        
-        // Extract category
-        let category = extractValue(from: jsonString, key: "category") ?? "Social Customs & Relationship Building"
-        
-        // Extract name card
-        let nameCard = extractValue(from: jsonString, key: "nameCard") ?? getLocalizedNameCard(concept: "culture", destination: destination)
-        
-        // Extract cultural insights
-        let culturalInsights = extractValue(from: jsonString, key: "culturalInsights") ?? 
-                              extractValue(from: jsonString, key: "insight") ?? 
-                              "Understanding cultural nuances requires attention to both explicit customs and subtle social cues. Building relationships based on mutual respect and cultural awareness shows professionalism and leads to successful partnerships."
-        
-        // Extract key knowledge array
-        let keyKnowledge = extractArrayValues(from: jsonString, key: "keyKnowledge") ?? 
-                          extractArrayValues(from: jsonString, key: "practicalTips") ?? [
-            "📚 Research local customs before important interactions",
-            "❤️ Show genuine interest in cultural traditions",
-            "🚫 Avoid assumptions based on stereotypes",
-            "👀 Pay attention to subtle social cues"
-        ]
-        
-        print("✅ [AICardGenerator] Manual extraction completed!")
-        print("📋 [AICardGenerator] Extracted content:")
-        print("   - Title: '\(title)'")
-        print("   - Category: '\(category)'")
-        print("   - Name Card: '\(nameCard)'")
-        print("   - Key Knowledge: \(keyKnowledge.count) items")
-        print("   - Cultural Insights: \(culturalInsights.count) characters")
-        
-        return CulturalInsightResponse(
-            title: title,
-            category: category,
-            nameCard: nameCard,
-            keyKnowledge: keyKnowledge,
-            culturalInsights: culturalInsights
-        )
-    }
-    
-    private func extractValue(from jsonString: String, key: String) -> String? {
-        // Extract string value from JSON using regex
-        let pattern = "\"" + key + "\"\\s*:\\s*\"([^\"]*)\""
-        if let regex = try? NSRegularExpression(pattern: pattern, options: []),
-           let match = regex.firstMatch(in: jsonString, options: [], range: NSRange(location: 0, length: jsonString.count)),
-           let range = Range(match.range(at: 1), in: jsonString) {
-            return String(jsonString[range])
-        }
-        return nil
-    }
-    
-    private func extractArrayValues(from jsonString: String, key: String) -> [String]? {
-        // Extract array of strings from JSON - handle multiline arrays properly
-        let pattern = "\"" + key + "\"\\s*:\\s*\\[([^\\]]+)\\]"
-        if let regex = try? NSRegularExpression(pattern: pattern, options: [.dotMatchesLineSeparators]),
-           let match = regex.firstMatch(in: jsonString, options: [], range: NSRange(location: 0, length: jsonString.count)),
-           let range = Range(match.range(at: 1), in: jsonString) {
-            
-            let arrayContent = String(jsonString[range])
-            print("🔍 [AICardGenerator] Raw array content: '\(arrayContent)'")
-            
-            // More robust parsing - split by quotes and commas
-            var items: [String] = []
-            let scanner = Scanner(string: arrayContent)
-            
-            while !scanner.isAtEnd {
-                scanner.scanUpToString("\"")
-                if scanner.scanString("\"") != nil {
-                    if let item = scanner.scanUpToString("\"") {
-                        let cleanedItem = item.trimmingCharacters(in: .whitespacesAndNewlines)
-                        if !cleanedItem.isEmpty {
-                            items.append(cleanedItem)
-                        }
-                    }
-                    scanner.scanString("\"")
-                }
-                scanner.scanUpToString("\"")
-            }
-            
-            print("🔍 [AICardGenerator] Extracted array items: \(items)")
-            return items.isEmpty ? nil : items
-        }
-        return nil
-    }
-    
     // MARK: - Helper Functions
-    private func extractDestination(from prompt: String) -> String {
-        if prompt.lowercased().contains("japan") { return "Japan" }
-        if prompt.lowercased().contains("germany") { return "Germany" }
-        if prompt.lowercased().contains("china") { return "China" }
-        if prompt.lowercased().contains("korea") { return "Korea" }
-        return "Unknown"
-    }
-    
-    private func extractNameCard(from title: String, destination: String = "Unknown") -> String {
-        // Extract key word or name from title for name card
-        let lowercaseTitle = title.lowercased()
-        
-        // Check for person-related contexts that might warrant full names
-        if lowercaseTitle.contains("ceo") || lowercaseTitle.contains("executive") || lowercaseTitle.contains("manager") {
-            switch destination.lowercased() {
-            case "japan":
-                return "Tanaka Hiroshi\n田中宏"
-            case "germany":
-                return "Hans Müller\nハンス・ミュラー"
-            case "china":
-                return "Wang Li Ming\n王立明"
-            case "korea":
-                return "Kim Min Jun\n김민준"
-            default:
-                return "Executive Name"
-            }
-        } else if lowercaseTitle.contains("host") || lowercaseTitle.contains("hostess") {
-            switch destination.lowercased() {
-            case "japan":
-                return "Yamamoto Kenji\n山本健二"
-            case "germany":
-                return "Maria Weber\nマリア・ウェーバー"
-            case "china":
-                return "Chen Mei Li\n陈美丽"
-            case "korea":
-                return "Lee Sung Ho\n이성호"
-            default:
-                return "Host Name"
-            }
-        } else if lowercaseTitle.contains("colleague") || lowercaseTitle.contains("coworker") {
-            switch destination.lowercased() {
-            case "japan":
-                return "Sato Yuki\n佐藤由紀"
-            case "germany":
-                return "Anna Schmidt\nアンナ・シュミット"
-            case "china":
-                return "Liu Wei\n刘伟"
-            case "korea":
-                return "Park Ji Hye\n박지혜"
-            default:
-                return "Colleague Name"
-            }
-        }
-        // Concept-based name cards (now localized)
-        else if lowercaseTitle.contains("greeting") || lowercaseTitle.contains("hello") {
-            return getLocalizedNameCard(concept: "greeting", destination: destination)
-        } else if lowercaseTitle.contains("meeting") || lowercaseTitle.contains("business") {
-            return getLocalizedNameCard(concept: "protocol", destination: destination)
-        } else if lowercaseTitle.contains("dining") || lowercaseTitle.contains("food") {
-            return getLocalizedNameCard(concept: "dining", destination: destination)
-        } else if lowercaseTitle.contains("time") || lowercaseTitle.contains("punctuality") {
-            return getLocalizedNameCard(concept: "time", destination: destination)
-        } else if lowercaseTitle.contains("hierarchy") || lowercaseTitle.contains("respect") {
-            return getLocalizedNameCard(concept: "respect", destination: destination)
-        } else if lowercaseTitle.contains("gift") {
-            return getLocalizedNameCard(concept: "gift", destination: destination)
-        } else if lowercaseTitle.contains("communication") || lowercaseTitle.contains("speak") {
-            return getLocalizedNameCard(concept: "communication", destination: destination)
-        } else {
-            // Extract first meaningful word from title and check if it's a place name
-            let words = title.components(separatedBy: " ")
-            let firstWord = words.first { !["the", "a", "an", "of", "in", "for", "with", "and"].contains($0.lowercased()) }
-            
-            // Check if it's a place name that should be localized
-            if let word = firstWord {
-                return getLocalizedPlaceName(place: word, destination: destination) ?? 
-                       getLocalizedNameCard(concept: word, destination: destination)
-            }
-            
-            return getLocalizedNameCard(concept: "culture", destination: destination)
-        }
-    }
-    
-    private func extractQuery(from prompt: String) -> String {
-        let lines = prompt.components(separatedBy: "\n")
-        for line in lines {
-            if line.hasPrefix("User Question:") {
-                return line.replacingOccurrences(of: "User Question:", with: "").trimmingCharacters(in: .whitespacesAndNewlines)
-            }
-        }
-        return ""
-    }
-    
     private func mapStringToCategory(_ categoryString: String) -> CulturalCategory {
         switch categoryString {
-        case "Business Etiquette & Meeting Protocols":
+        case "Business Etiquette":
             return .businessEtiquette
-        case "Social Customs & Relationship Building":
+        case "Social Customs":
             return .socialCustoms
-        case "Communication Styles & Non-verbal Cues":
+        case "Communication Styles":
             return .communication
-        case "Gift Giving & Entertainment":
+        case "Gift Giving":
             return .giftGiving
-        case "Dining Etiquette & Food Culture":
+        case "Dining Etiquette":
             return .diningCulture
-        case "Time Management & Scheduling":
+        case "Time Management":
             return .timeManagement
-        case "Hierarchy & Decision Making":
+        case "Hierarchy":
             return .hierarchy
-        case "Greeting Customs & Personal Space":
+        case "Greeting Customs":
             return .greetingCustoms
         default:
             return .socialCustoms
         }
     }
-    
-    private func parseManualResponse(response: String, destination: String, question: String) throws -> CulturalCard {
-        print("🛠️ [AICardGenerator] Using manual parsing fallback...")
-        print("📝 [AICardGenerator] Creating basic CulturalCard from raw response")
-        
-        // Fallback manual parsing if JSON fails
-        let nameCardString = getLocalizedNameCard(concept: "culture", destination: destination)
-        let lines = nameCardString.components(separatedBy: "\n")
-        let nameCardApp = lines.count >= 2 ? lines[0] : nameCardString
-        let nameCardLocal = lines.count >= 2 ? lines[1] : nil
-        
-        let card = CulturalCard(
-            title: "Cultural Insight",
-            category: .socialCustoms,
-            nameCardApp: nameCardApp,
-            nameCardLocal: nameCardLocal,
-            keyKnowledge: ["👀 Follow local customs", "🙏 Be respectful", "📝 Observe before acting", "❓ Ask for guidance when unsure"],
-            culturalInsights: response,
-            destination: destination,
-            question: question
-        )
-        
-        print("✅ [AICardGenerator] Manual parsing completed!")
-        print("📋 [AICardGenerator] Manual card details:")
-        print("   - Title: '\(card.title)'")
-        print("   - Category: \(card.category?.title ?? "None")")
-        print("   - Insight: Using full AI response as insight")
-        print("   - Tips: Using default tips")
-        
-        return card
-    }
-}
-
-// MARK: - AI Response Model
-private struct AIResponse: Codable {
-    let title: String
-    let category: String
-    let nameCard: String?
-    let keyKnowledge: [String]?
-    let culturalInsights: String?
-    
-    // Legacy fields for backward compatibility
-    let insight: String
-    let practicalTips: [String]
-}
-
-// MARK: - Mock Response Generators
-extension AICardGenerator {
-    private func generateGreetingResponse(for destination: String) -> String {
-        switch destination.lowercased() {
-        case "japan":
-            return """
-            {
-                "title": "Business Greeting Etiquette",
-                "category": "Greeting Customs & Personal Space",
-                "nameCard": "\(getLocalizedNameCard(concept: "respect", destination: destination))",
-                "keyKnowledge": [
-                    "🙇 Bowing depth reflects hierarchy and respect levels",
-                    "🤝 Handshakes are becoming common with international colleagues",
-                    "👴 Senior person should initiate the greeting interaction",
-                    "🤏 Gentle grip preferred over firm Western-style handshakes"
-                ],
-                "culturalInsights": "In Japanese business culture, the bow (ojigi) is the traditional greeting that shows respect and hierarchy awareness. The depth and duration of your bow should reflect the status of the person you're greeting - deeper bows for senior executives, lighter bows for peers. However, many Japanese businesspeople now expect handshakes when meeting international colleagues, creating a hybrid approach that honors both traditions.",
-                "insight": "In Japanese business culture, the bow (ojigi) is the traditional greeting that shows respect and hierarchy awareness. The depth and duration of your bow should reflect the status of the person you're greeting - deeper bows for senior executives, lighter bows for peers. However, many Japanese businesspeople now expect handshakes when meeting international colleagues, creating a hybrid approach.",
-                "practicalTips": [
-                    "DO: Offer a slight bow while extending your hand for a handshake",
-                    "DO: Wait for the senior person to initiate the greeting",
-                    "DON'T: Rush the greeting process - allow time for proper acknowledgment",
-                    "DON'T: Use overly firm handshakes; Japanese prefer gentler grips"
-                ]
-            }
-            """
-        case "germany":
-            return """
-            {
-                "title": "German Business Greetings",
-                "category": "Greeting Customs & Personal Space",
-                "nameCard": "\(getLocalizedNameCard(concept: "directness", destination: destination))",
-                "keyKnowledge": [
-                    "🤝 Firm handshake with direct eye contact is standard",
-                    "🎩 Use formal titles and surnames until invited otherwise",
-                    "⏰ Punctuality shows respect and professionalism",
-                    "🚧 Keep personal and professional boundaries clear"
-                ],
-                "culturalInsights": "German business culture values directness and efficiency in greetings. A firm handshake with direct eye contact is the standard, accompanied by formal titles and surnames until invited to use first names. Germans appreciate punctuality and prefer to keep personal and professional boundaries clear during initial meetings, focusing on business rather than extensive personal conversation.",
-                "insight": "German business culture values directness and efficiency in greetings. A firm handshake with direct eye contact is the standard, accompanied by formal titles and surnames until invited to use first names. Germans appreciate punctuality and prefer to keep personal and professional boundaries clear during initial meetings.",
-                "practicalTips": [
-                    "DO: Use a firm handshake with direct eye contact",
-                    "DO: Address people by their title and surname initially",
-                    "DON'T: Use first names unless explicitly invited",
-                    "DON'T: Engage in extensive small talk during business greetings"
-                ]
-            }
-            """
-        default:
-            return generateGeneralResponse(for: destination, query: "greeting customs")
-        }
-    }
-    
-    private func generateMeetingResponse(for destination: String) -> String {
-        return """
-        {
-            "title": "Business Meeting Protocols",
-            "category": "Business Etiquette & Meeting Protocols",
-            "nameCard": "\(getLocalizedNameCard(concept: "protocol", destination: destination))",
-            "keyKnowledge": [
-                "⏰ Punctuality demonstrates respect and professionalism",
-                "💳 Business card exchange follows specific cultural rules",
-                "📊 Hierarchy determines speaking order and decision-making",
-                "📚 Cultural preparation shows commitment to relationships"
-            ],
-            "culturalInsights": "Business meetings in \(destination) follow specific cultural protocols that demonstrate respect and professionalism. Understanding hierarchy, timing, and communication styles is crucial for successful interactions. Preparation and attention to cultural nuances can make the difference between building strong business relationships and missing opportunities.",
-            "insight": "Business meetings in \(destination) follow specific cultural protocols that demonstrate respect and professionalism. Understanding hierarchy, timing, and communication styles is crucial for successful interactions. Preparation and attention to cultural nuances can make the difference between building strong business relationships and missing opportunities.",
-            "practicalTips": [
-                "DO: Arrive on time or slightly early to show respect",
-                "DO: Bring business cards and exchange them properly",
-                "DON'T: Interrupt senior members during presentations",
-                "DON'T: Make decisions without considering hierarchy"
-            ]
-        }
-        """
-    }
-    
-    private func generateDiningResponse(for destination: String) -> String {
-        return """
-        {
-            "title": "Business Dining Etiquette",
-            "category": "Dining Etiquette & Food Culture",
-            "nameCard": "\(getLocalizedNameCard(concept: "dining", destination: destination))",
-            "keyKnowledge": [
-                "🍽️ Host always initiates eating and drinking",
-                "👍 Trying local dishes shows cultural appreciation",
-                "💬 Build rapport before discussing business matters",
-                "🙏 Politely explain if you cannot eat something offered"
-            ],
-            "culturalInsights": "Business dining in \(destination) is an important relationship-building activity with specific etiquette rules. Understanding proper table manners, gift-giving customs, and conversation topics can strengthen business partnerships. The way you handle dining situations often reflects your respect for local culture and attention to detail.",
-            "insight": "Business dining in \(destination) is an important relationship-building activity with specific etiquette rules. Understanding proper table manners, gift-giving customs, and conversation topics can strengthen business partnerships. The way you handle dining situations often reflects your respect for local culture and attention to detail.",
-            "practicalTips": [
-                "DO: Wait for the host to begin eating or drinking",
-                "DO: Try local dishes to show cultural appreciation",
-                "DON'T: Discuss business immediately - build rapport first",
-                "DON'T: Refuse offered food or drink without polite explanation"
-            ]
-        }
-        """
-    }
-    
-    private func generateGeneralResponse(for destination: String, query: String) -> String {
-        // Check if query is about specific people/roles to determine name card type
-        let lowercaseQuery = query.lowercased()
-        let nameCard: String
-        
-        if lowercaseQuery.contains("ceo") || lowercaseQuery.contains("executive") || lowercaseQuery.contains("manager") {
-            // Use appropriate full name based on destination
-            switch destination.lowercased() {
-            case "japan":
-                nameCard = "Tanaka Hiroshi\n田中宏"
-            case "germany":
-                nameCard = "Hans Müller\nハンス・ミュラー"
-            case "china":
-                nameCard = "Wang Li Ming\n王立明"
-            case "korea":
-                nameCard = "Kim Min Jun\n김민준"
-            default:
-                nameCard = "Executive Name"
-            }
-        } else if lowercaseQuery.contains("founder") {
-            print("🔍 [AICardGenerator] Detected founder query: '\(query)'")
-            
-            // Check for specific companies first
-            if lowercaseQuery.contains("sony") {
-                nameCard = "Akio Morita\n盛田昭夫"
-                print("🔍 [AICardGenerator] Using Sony founder: '\(nameCard)'")
-            } else if lowercaseQuery.contains("toyota") {
-                nameCard = "Kiichiro Toyoda\n豊田喜一郎"
-                print("🔍 [AICardGenerator] Using Toyota founder: '\(nameCard)'")
-            } else if lowercaseQuery.contains("honda") {
-                nameCard = "Soichiro Honda\n本田宗一郎"
-                print("🔍 [AICardGenerator] Using Honda founder: '\(nameCard)'")
-            } else if lowercaseQuery.contains("nintendo") {
-                nameCard = "Fusajiro Yamauchi\n山内房治郎"
-                print("🔍 [AICardGenerator] Using Nintendo founder: '\(nameCard)'")
-            } else if lowercaseQuery.contains("panasonic") {
-                nameCard = "Konosuke Matsushita\n松下幸之助"
-                print("🔍 [AICardGenerator] Using Panasonic founder: '\(nameCard)'")
-            } else {
-                // Generic founder names by country
-                switch destination.lowercased() {
-                case "japan":
-                    nameCard = "Tanaka Hiroshi\n田中宏"
-                case "germany":
-                    nameCard = "Hans Müller\nハンス・ミュラー"
-                case "china":
-                    nameCard = "Wang Li Ming\n王立明"
-                case "korea":
-                    nameCard = "Kim Min Jun\n김민준"
-                default:
-                    nameCard = "Executive Name"
-                }
-                print("🔍 [AICardGenerator] Using generic founder: '\(nameCard)'")
-            }
-        } else if lowercaseQuery.contains("colleague") || lowercaseQuery.contains("coworker") {
-            switch destination.lowercased() {
-            case "japan":
-                nameCard = "Sato Yuki\n佐藤由紀"
-            case "germany":
-                nameCard = "Anna Schmidt\nアンナ・シュミット"
-            case "china":
-                nameCard = "Liu Wei\n刘伟"
-            case "korea":
-                nameCard = "Park Ji Hye\n박지혜"
-            default:
-                nameCard = "Colleague Name"
-            }
-        } else {
-            // Use localized concept name for "Culture"
-            nameCard = getLocalizedNameCard(concept: "culture", destination: destination)
-        }
-        
-        return """
-        {
-            "title": "Cultural Business Insight",
-            "category": "Social Customs & Relationship Building",
-            "nameCard": "\(nameCard)",
-            "keyKnowledge": [
-                "📚 Research local customs before important interactions",
-                "❤️ Show genuine interest in cultural traditions",
-                "🚫 Avoid assumptions based on stereotypes",
-                "👀 Pay attention to subtle social cues and non-verbal communication"
-            ],
-            "culturalInsights": "Understanding cultural nuances in \(destination) requires attention to both explicit customs and subtle social cues. Business relationships are built on mutual respect and cultural awareness. Taking time to learn and demonstrate appreciation for local customs shows professionalism and can lead to stronger, more successful business partnerships.",
-            "insight": "Understanding cultural nuances in \(destination) requires attention to both explicit customs and subtle social cues. Business relationships are built on mutual respect and cultural awareness. Taking time to learn and demonstrate appreciation for local customs shows professionalism and can lead to stronger, more successful business partnerships.",
-            "practicalTips": [
-                "DO: Research local customs before important interactions",
-                "DO: Show genuine interest in cultural traditions",
-                "DON'T: Make assumptions based on stereotypes",
-                "DON'T: Ignore subtle social cues or non-verbal communication"
-            ]
-        }
-        """
-    }
 }
 
 // MARK: - AI Generation Errors
 enum AIGenerationError: LocalizedError {
+    case apiKeyNotConfigured
+    case invalidURL
     case invalidResponse
-    case networkError
-    case modelUnavailable
+    case emptyResponse
+    case httpError(Int)
+    case networkError(Error)
     case processingFailed
     
     var errorDescription: String? {
         switch self {
+        case .apiKeyNotConfigured:
+            return "OpenAI API key not configured. Please add your API key to environment variables."
+        case .invalidURL:
+            return "Invalid ChatGPT API URL"
         case .invalidResponse:
-            return "Invalid AI response format"
-        case .networkError:
-            return "Network connection failed"
-        case .modelUnavailable:
-            return "AI model temporarily unavailable"
+            return "Invalid response from ChatGPT API"
+        case .emptyResponse:
+            return "Empty response from ChatGPT API"
+        case .httpError(let statusCode):
+            return "HTTP Error \(statusCode) from ChatGPT API"
+        case .networkError(let error):
+            return "Network error: \(error.localizedDescription)"
         case .processingFailed:
-            return "Failed to process AI response"
+            return "Failed to process ChatGPT response"
         }
     }
 }

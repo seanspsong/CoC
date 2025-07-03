@@ -12,29 +12,33 @@ struct Destination: Identifiable, Codable {
     let id = UUID()
     var name: String
     var flag: String
+    var country: String // New field for country context
     var culturalCards: [CulturalCard]
     var dateAdded: Date
     var lastUpdated: Date
     
     // Custom CodingKeys to exclude id from encoding/decoding
     private enum CodingKeys: String, CodingKey {
-        case name, flag, culturalCards, dateAdded, lastUpdated
+        case name, flag, country, culturalCards, dateAdded, lastUpdated
     }
     
-    // Custom decoder to handle id initialization
+    // Custom decoder to handle id initialization and backward compatibility
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         
         self.name = try container.decode(String.self, forKey: .name)
         self.flag = try container.decode(String.self, forKey: .flag)
+        // Handle backward compatibility - use name as country if country field doesn't exist
+        self.country = try container.decodeIfPresent(String.self, forKey: .country) ?? container.decode(String.self, forKey: .name)
         self.culturalCards = try container.decode([CulturalCard].self, forKey: .culturalCards)
         self.dateAdded = try container.decode(Date.self, forKey: .dateAdded)
         self.lastUpdated = try container.decode(Date.self, forKey: .lastUpdated)
     }
     
-    init(name: String, flag: String) {
+    init(name: String, flag: String, country: String? = nil) {
         self.name = name
         self.flag = flag
+        self.country = country ?? name // Use name as country if not provided
         self.culturalCards = []
         self.dateAdded = Date()
         self.lastUpdated = Date()
@@ -263,7 +267,7 @@ enum CulturalCategory: String, CaseIterable, Codable {
 extension Destination {
     static let sampleData: [Destination] = [
         {
-            var japan = Destination(name: "Japan", flag: "🇯🇵")
+            var japan = Destination(name: "Japan", flag: "🇯🇵", country: "Japan")
             japan.addCard(CulturalCard(
                 title: "Business Card Exchange",
                 category: .businessEtiquette,
@@ -296,7 +300,7 @@ extension Destination {
         }(),
         
         {
-            var germany = Destination(name: "Germany", flag: "🇩🇪")
+            var germany = Destination(name: "Germany", flag: "🇩🇪", country: "Germany")
             germany.addCard(CulturalCard(
                 title: "Punctuality",
                 category: .timeManagement,
