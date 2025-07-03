@@ -1411,6 +1411,22 @@ struct CulturalCardView: View {
                 return "📷"
             } else if searchText.contains("mitsubishi") {
                 return "🏢"
+            } else if searchText.contains("ferrari") {
+                return "🏎️"
+            } else if searchText.contains("lamborghini") {
+                return "🏎️"
+            } else if searchText.contains("maserati") {
+                return "🏎️"
+            } else if searchText.contains("porsche") {
+                return "🏎️"
+            } else if searchText.contains("bmw") {
+                return "🚗"
+            } else if searchText.contains("mercedes") {
+                return "🚗"
+            } else if searchText.contains("audi") {
+                return "🚗"
+            } else if searchText.contains("volkswagen") {
+                return "🚗"
             }
             
             // People/Names emojis
@@ -1422,6 +1438,8 @@ struct CulturalCardView: View {
                 return "🎼"
             } else if searchText.contains("ibuka") || searchText.contains("morita") {
                 return "💡"
+            } else if searchText.contains("enzo") && searchText.contains("ferrari") {
+                return "🏎️"
             }
             
             // Places/Landmarks emojis
