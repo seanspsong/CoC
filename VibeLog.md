@@ -203,12 +203,75 @@ A log to track the development process, vibes, achievements, and lessons learned
 
 ---
 
+### VL0011
+- **Time**: 14:25
+- **Date**: 2025-02-07
+- **Vibe Summary**: Local language implementation for Name Card sections. Enhanced cultural authenticity by displaying Name Card content in each destination's local language, supporting Japanese, German, Chinese, and Korean with comprehensive concept translations and existing person name localization.
+- **Achievement**: 
+  - ✅ Created comprehensive local language mapping system for cultural concepts
+  - ✅ Added Japanese translations for 12 key concepts (尊敬 for "Respect", 礼儀 for "Protocol", etc.)
+  - ✅ Added German translations for cultural concepts (Respekt, Direktheit, Protokoll, etc.)
+  - ✅ Added Chinese translations with traditional characters (尊重, 礼仪, 文化, etc.)
+  - ✅ Added Korean translations for all cultural concepts (존경, 예의, 문화, etc.)
+  - ✅ Updated AI card generation to use localized concept names throughout
+  - ✅ Enhanced greeting, meeting, and dining response generators with local language support
+  - ✅ Modified general response logic to maintain person names while localizing concepts
+  - ✅ Updated fallback and error handling methods to use localized names
+  - ✅ Enhanced extractNameCard method with destination-aware localization
+  - ✅ Successfully built and tested app with all localization changes
+  - ✅ Maintained existing person name logic (Tanaka Hiroshi, Müller Hans, etc.)
+- **Lesson Learnt**: Local language content significantly enhances cultural authenticity and learning experience. Systematic localization requires updating all AI generation paths including fallback methods. Swift string interpolation with localization functions creates maintainable multilingual systems. Comprehensive concept mapping (respect, protocol, dining, culture, etc.) covers most cultural card scenarios. Maintaining separation between concept names (localized) and person names (already localized) preserves existing functionality. Proper parameter threading through all generation methods ensures consistent localization. Cultural concepts translated into local languages create more immersive and educational experiences for international business travelers.
+
+---
+
+### VL0012
+- **Time**: 14:46
+- **Date**: 2025-01-02
+- **Vibe Summary**: Text-to-speech integration for local language pronunciation. Enhanced Name Card section with speaker button to provide authentic pronunciation learning for bilingual cultural concepts and person names.
+- **Achievement**: 
+  - ✅ Created comprehensive TextToSpeechManager class with AVSpeechSynthesizer
+  - ✅ Added speaker button next to Name Card content for pronunciation functionality
+  - ✅ Implemented multi-language voice synthesis (Japanese, German, Chinese, Korean)
+  - ✅ Added local language text extraction from bilingual Name Card content
+  - ✅ Created dynamic language code detection based on destination country
+  - ✅ Implemented visual feedback with animated speaker icon during pronunciation
+  - ✅ Added button state management with disable/enable during speech playback
+  - ✅ Optimized speech parameters (rate 0.5x for learning, proper pitch/volume)
+  - ✅ Integrated text-to-speech with existing bilingual format (first line extraction)
+  - ✅ Added proper button styling with purple theme and circular background
+  - ✅ Successfully built and tested app with all pronunciation features
+  - ✅ Maintained responsive layout with proper alignment and spacing
+- **Lesson Learnt**: AVSpeechSynthesizer provides excellent built-in language support for authentic pronunciation with proper voice selection per language. Extracting first line from bilingual text (local language) ensures accurate pronunciation of native terms. Text-to-speech rate reduction (0.5x) significantly improves language learning experience. Visual feedback during speech (animated icons, button states) enhances user understanding of system state. Proper button alignment with multiline text requires careful layout consideration (padding, spacing). Integration of pronunciation features creates immersive language learning environment for cultural education.
+
+---
+
+### VL0013
+- **Time**: 14:58
+- **Date**: 2025-01-02
+- **Vibe Summary**: Bilingual name format optimization and TTS enhancement. Improved bilingual display format to show English first, then local language, with speaker functionality pronouncing only the local language text for enhanced language learning experience.
+- **Achievement**: 
+  - ✅ Updated bilingual format from "Local\nEnglish" to "English\nLocal" for better readability
+  - ✅ Modified TTS extraction to pronounce second line (local language) instead of first line
+  - ✅ Updated all person name formats: "Tanaka Hiroshi\n田中宏", "Hans Müller\nハンス・ミュラー"
+  - ✅ Updated all cultural concept formats: "Respect\n尊敬", "Protocol\n礼儀", "Business\nビジネス"
+  - ✅ Updated all place name formats: "Tokyo\n東京", "Beijing\n北京", "Seoul\n서울"
+  - ✅ Applied consistent "English\nLocal" format across Japanese, German, Chinese, and Korean
+  - ✅ Enhanced TTS logic to extract and pronounce only local language text (second line)
+  - ✅ Maintained proper fallback handling for single-line content
+  - ✅ Updated all AI generation methods to use new bilingual format
+  - ✅ Successfully built and tested app with new format and TTS functionality
+  - ✅ Improved language learning experience with clear visual hierarchy
+  - ✅ Ensured pronunciation accuracy for authentic local language practice
+- **Lesson Learnt**: Consistent bilingual format with English first provides better user comprehension and visual hierarchy. Pronouncing only local language text (second line) creates focused language learning experience. Systematic format updates across all content types (names, concepts, places) maintains application consistency. TTS extraction logic must adapt to content format changes to ensure accurate pronunciation. String line extraction with proper fallback handling prevents crashes with unexpected content formats. Visual hierarchy in bilingual content (familiar\nunfamiliar) follows natural learning progression patterns.
+
+---
+
 ## Project Status
-🎯 **Current State**: Fully functional cultural learning app with optimized UI/UX, live voice-to-card AI generation, and immersive full-screen card viewing experience
+🎯 **Current State**: Fully functional cultural learning app with optimized bilingual display format, enhanced TTS pronunciation focused on local language learning, immersive full-screen card viewing experience, and comprehensive multilingual support
 📱 **Platform**: iOS (SwiftUI, iOS 17.0+)
-🏗️ **Architecture**: MVVM with AI-powered voice processing and comprehensive error handling
-🌟 **Key Features**: Expandable cultural cards (90% screen height), scrollable content with proper clipping, live transcription display, voice-to-card generation, purple color theme (#8A2BE2), professional card design, cultural knowledge system with expandable insights
-✨ **Recent Enhancement**: Full-screen detailed card view with 90% screen expansion, content clipping, and optimized expandable Cultural Insights section for immersive learning experience
+🏗️ **Architecture**: MVVM with AI-powered voice processing, comprehensive error handling, multilingual localization system, and focused text-to-speech integration
+🌟 **Key Features**: Enhanced bilingual format (English\nLocal), focused TTS pronunciation (local language only), comprehensive Name Card localization (Japanese, German, Chinese, Korean), expandable cultural cards (90% screen height), scrollable content with proper clipping, live transcription display, voice-to-card generation, purple color theme (#8A2BE2), professional card design
+✨ **Recent Enhancement**: Optimized bilingual name format displaying English first, then local language, with speaker button pronouncing only the local language text for authentic pronunciation learning (尊敬, Respekt, 尊重, 존경) creating focused language learning experience
 
 ## Next Steps
 - [x] Implement consistent purple color theme across the app
@@ -216,6 +279,9 @@ A log to track the development process, vibes, achievements, and lessons learned
 - [x] Implement live voice transcription and real-time feedback
 - [x] Build AI-powered voice-to-card generation system
 - [x] Add comprehensive speech recognition error handling
+- [x] Implement local language support for Name Card content
+- [x] Add text-to-speech pronunciation functionality for local language names
+- [x] Optimize bilingual format for better readability and focused TTS pronunciation
 - [ ] Enhance AI card generation with more sophisticated prompts
 - [ ] Implement destination and card creation flows (manual entry)
 - [ ] Add persistent data storage (Core Data/SwiftData)

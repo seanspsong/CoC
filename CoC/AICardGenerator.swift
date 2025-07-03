@@ -18,7 +18,7 @@ struct CulturalInsightResponse {
     @Guide(description: "One of: Business Etiquette, Social Customs, Communication Styles, Gift Giving, Dining Etiquette, Time Management, Hierarchy, Greeting Customs")
     let category: String
     
-    @Guide(description: "One word/concept or full person name that captures the essence (e.g., 'Respect', 'Hierarchy', 'Tanaka Hiroshi', 'Protocol')")
+    @Guide(description: "One word/concept or full person name with local translation (e.g., 'Respect\\n尊敬', 'Hierarchy\\n階層', 'Tanaka Hiroshi\\n田中宏', 'Protocol\\n礼儀')")
     let nameCard: String
     
     @Guide(description: "Exactly 4 key knowledge points starting with relevant emojis", .count(4))
@@ -111,7 +111,7 @@ class AICardGenerator: ObservableObject {
         User Question: "\(query)"
         
         Please provide a cultural insight about \(destination) that addresses the user's question. Structure your response with:
-        1. A name card: use a full person name (given name + family name) if about specific people/roles, otherwise use one concept word
+        1. A name card: use a full person name (given name + family name) if about specific people/roles, otherwise use one concept word. ALWAYS provide both English and local language versions separated by newline (e.g., "Respect\\n尊敬" for concepts, "Tanaka Hiroshi\\n田中宏" for names).
         2. Four key knowledge points starting with relevant emojis
         3. Comprehensive cultural insights paragraph
         """
@@ -164,7 +164,8 @@ class AICardGenerator: ObservableObject {
             
             // Fallback to mock response if Foundation Model fails
             let mockResponse = try await generateMockResponse(for: prompt)
-            return try parseMockResponseToStructured(mockResponse)
+            let destination = extractDestination(from: prompt)
+            return try parseMockResponseToStructured(mockResponse, destination: destination)
         }
     }
     
@@ -213,10 +214,34 @@ class AICardGenerator: ObservableObject {
         // Map category string to enum
         let category = mapStringToCategory(response.category)
         
+        // Parse the nameCard if it contains both app and local language
+        var nameCardApp: String? = nil
+        var nameCardLocal: String? = nil
+        
+        let nameCard = response.nameCard
+        let lines = nameCard.components(separatedBy: "\n")
+        if lines.count >= 2 {
+            nameCardApp = lines[0]
+            nameCardLocal = lines[1]
+        } else {
+            // If we only got one line, try to get localized version for concepts
+            nameCardApp = nameCard
+            // Try to get localized version if it's a concept
+            let localizedVersion = getLocalizedNameCard(concept: nameCard, destination: destination)
+            let localizedLines = localizedVersion.components(separatedBy: "\n")
+            if localizedLines.count >= 2 {
+                nameCardApp = localizedLines[0]
+                nameCardLocal = localizedLines[1]
+            } else {
+                nameCardLocal = nil
+            }
+        }
+        
         let card = CulturalCard(
             title: response.title,
             category: category,
-            nameCard: response.nameCard,
+            nameCardApp: nameCardApp,
+            nameCardLocal: nameCardLocal,
             keyKnowledge: response.keyKnowledge,
             culturalInsights: response.culturalInsights,
             destination: destination,
@@ -227,7 +252,8 @@ class AICardGenerator: ObservableObject {
         print("🔍 [AICardGenerator] Final card details:")
         print("   - Title: '\(card.title)'")
         print("   - Is AI Generated: \(card.isAIGenerated)")
-        print("   - Name Card: '\(card.nameCard ?? "nil")'")
+        print("   - Name Card App: '\(card.nameCardApp ?? "nil")'")
+        print("   - Name Card Local: '\(card.nameCardLocal ?? "nil")'")
         print("   - Key Knowledge: \(card.keyKnowledge?.count ?? 0) items: \(card.keyKnowledge ?? [])")
         print("   - Cultural Insights: '\(card.culturalInsights ?? "nil")'")
         print("   - Question: '\(card.question ?? "nil")'")
@@ -241,7 +267,7 @@ class AICardGenerator: ObservableObject {
     }
     
     // MARK: - Mock Response Fallback
-    private func parseMockResponseToStructured(_ mockResponse: String) throws -> CulturalInsightResponse {
+    private func parseMockResponseToStructured(_ mockResponse: String, destination: String) throws -> CulturalInsightResponse {
         print("🔧 [AICardGenerator] Parsing mock response to structured format...")
         print("📝 [AICardGenerator] Mock response content:")
         print("--- MOCK RESPONSE START ---")
@@ -264,7 +290,7 @@ class AICardGenerator: ObservableObject {
                 return CulturalInsightResponse(
                     title: parsed.title,
                     category: parsed.category,
-                    nameCard: parsed.nameCard ?? extractNameCard(from: parsed.title),
+                    nameCard: parsed.nameCard ?? extractNameCard(from: parsed.title, destination: destination),
                     keyKnowledge: parsed.keyKnowledge ?? parsed.practicalTips,
                     culturalInsights: parsed.culturalInsights ?? parsed.insight
                 )
@@ -274,7 +300,7 @@ class AICardGenerator: ObservableObject {
                 print("🔄 [AICardGenerator] Attempting manual content extraction...")
                 
                 // Manual parsing fallback - extract content from JSON string
-                return extractContentFromJSONString(mockResponse)
+                return extractContentFromJSONString(mockResponse, destination: destination)
             }
         }
         
@@ -285,7 +311,7 @@ class AICardGenerator: ObservableObject {
         return CulturalInsightResponse(
             title: "Cultural Business Insight",
             category: "Social Customs & Relationship Building",
-            nameCard: "Culture",
+            nameCard: getLocalizedNameCard(concept: "culture", destination: destination),
             keyKnowledge: [
                 "📚 Research local customs before important interactions",
                 "❤️ Show genuine interest in cultural traditions",
@@ -319,10 +345,17 @@ class AICardGenerator: ObservableObject {
                 let category = mapStringToCategory(parsed.category)
                 print("🏷️ [AICardGenerator] Mapped category '\(parsed.category)' to: \(category)")
                 
+                // Parse the nameCard if it contains both app and local language
+                let nameCardString = parsed.nameCard ?? extractNameCard(from: parsed.title, destination: destination)
+                let lines = nameCardString.components(separatedBy: "\n")
+                let nameCardApp = lines.count >= 2 ? lines[0] : nameCardString
+                let nameCardLocal = lines.count >= 2 ? lines[1] : nil
+                
                 let card = CulturalCard(
                     title: parsed.title,
                     category: category,
-                    nameCard: parsed.nameCard ?? extractNameCard(from: parsed.title),
+                    nameCardApp: nameCardApp,
+                    nameCardLocal: nameCardLocal,
                     keyKnowledge: parsed.keyKnowledge ?? parsed.practicalTips,
                     culturalInsights: parsed.culturalInsights ?? parsed.insight,
                     destination: destination,
@@ -345,7 +378,7 @@ class AICardGenerator: ObservableObject {
     }
     
     // MARK: - Manual Content Extraction
-    private func extractContentFromJSONString(_ jsonString: String) -> CulturalInsightResponse {
+    private func extractContentFromJSONString(_ jsonString: String, destination: String) -> CulturalInsightResponse {
         print("🔧 [AICardGenerator] Extracting content manually from JSON string...")
         
         // Extract title
@@ -355,7 +388,7 @@ class AICardGenerator: ObservableObject {
         let category = extractValue(from: jsonString, key: "category") ?? "Social Customs & Relationship Building"
         
         // Extract name card
-        let nameCard = extractValue(from: jsonString, key: "nameCard") ?? "Culture"
+        let nameCard = extractValue(from: jsonString, key: "nameCard") ?? getLocalizedNameCard(concept: "culture", destination: destination)
         
         // Extract cultural insights
         let culturalInsights = extractValue(from: jsonString, key: "culturalInsights") ?? 
@@ -442,37 +475,78 @@ class AICardGenerator: ObservableObject {
         return "Unknown"
     }
     
-    private func extractNameCard(from title: String) -> String {
+    private func extractNameCard(from title: String, destination: String = "Unknown") -> String {
         // Extract key word or name from title for name card
         let lowercaseTitle = title.lowercased()
         
         // Check for person-related contexts that might warrant full names
         if lowercaseTitle.contains("ceo") || lowercaseTitle.contains("executive") || lowercaseTitle.contains("manager") {
-            return "Executive Name"
+            switch destination.lowercased() {
+            case "japan":
+                return "Tanaka Hiroshi\n田中宏"
+            case "germany":
+                return "Hans Müller\nハンス・ミュラー"
+            case "china":
+                return "Wang Li Ming\n王立明"
+            case "korea":
+                return "Kim Min Jun\n김민준"
+            default:
+                return "Executive Name"
+            }
         } else if lowercaseTitle.contains("host") || lowercaseTitle.contains("hostess") {
-            return "Host Name"
+            switch destination.lowercased() {
+            case "japan":
+                return "Yamamoto Kenji\n山本健二"
+            case "germany":
+                return "Maria Weber\nマリア・ウェーバー"
+            case "china":
+                return "Chen Mei Li\n陈美丽"
+            case "korea":
+                return "Lee Sung Ho\n이성호"
+            default:
+                return "Host Name"
+            }
         } else if lowercaseTitle.contains("colleague") || lowercaseTitle.contains("coworker") {
-            return "Colleague Name"
+            switch destination.lowercased() {
+            case "japan":
+                return "Sato Yuki\n佐藤由紀"
+            case "germany":
+                return "Anna Schmidt\nアンナ・シュミット"
+            case "china":
+                return "Liu Wei\n刘伟"
+            case "korea":
+                return "Park Ji Hye\n박지혜"
+            default:
+                return "Colleague Name"
+            }
         }
-        // Concept-based name cards
+        // Concept-based name cards (now localized)
         else if lowercaseTitle.contains("greeting") || lowercaseTitle.contains("hello") {
-            return "Greeting"
+            return getLocalizedNameCard(concept: "greeting", destination: destination)
         } else if lowercaseTitle.contains("meeting") || lowercaseTitle.contains("business") {
-            return "Protocol"
+            return getLocalizedNameCard(concept: "protocol", destination: destination)
         } else if lowercaseTitle.contains("dining") || lowercaseTitle.contains("food") {
-            return "Dining"
+            return getLocalizedNameCard(concept: "dining", destination: destination)
         } else if lowercaseTitle.contains("time") || lowercaseTitle.contains("punctuality") {
-            return "Timing"
+            return getLocalizedNameCard(concept: "time", destination: destination)
         } else if lowercaseTitle.contains("hierarchy") || lowercaseTitle.contains("respect") {
-            return "Respect"
+            return getLocalizedNameCard(concept: "respect", destination: destination)
         } else if lowercaseTitle.contains("gift") {
-            return "Gifting"
+            return getLocalizedNameCard(concept: "gift", destination: destination)
         } else if lowercaseTitle.contains("communication") || lowercaseTitle.contains("speak") {
-            return "Communication"
+            return getLocalizedNameCard(concept: "communication", destination: destination)
         } else {
-            // Extract first meaningful word from title
+            // Extract first meaningful word from title and check if it's a place name
             let words = title.components(separatedBy: " ")
-            return words.first { !["the", "a", "an", "of", "in", "for", "with", "and"].contains($0.lowercased()) } ?? "Culture"
+            let firstWord = words.first { !["the", "a", "an", "of", "in", "for", "with", "and"].contains($0.lowercased()) }
+            
+            // Check if it's a place name that should be localized
+            if let word = firstWord {
+                return getLocalizedPlaceName(place: word, destination: destination) ?? 
+                       getLocalizedNameCard(concept: word, destination: destination)
+            }
+            
+            return getLocalizedNameCard(concept: "culture", destination: destination)
         }
     }
     
@@ -514,10 +588,16 @@ class AICardGenerator: ObservableObject {
         print("📝 [AICardGenerator] Creating basic CulturalCard from raw response")
         
         // Fallback manual parsing if JSON fails
+        let nameCardString = getLocalizedNameCard(concept: "culture", destination: destination)
+        let lines = nameCardString.components(separatedBy: "\n")
+        let nameCardApp = lines.count >= 2 ? lines[0] : nameCardString
+        let nameCardLocal = lines.count >= 2 ? lines[1] : nil
+        
         let card = CulturalCard(
             title: "Cultural Insight",
             category: .socialCustoms,
-            nameCard: "Culture",
+            nameCardApp: nameCardApp,
+            nameCardLocal: nameCardLocal,
             keyKnowledge: ["👀 Follow local customs", "🙏 Be respectful", "📝 Observe before acting", "❓ Ask for guidance when unsure"],
             culturalInsights: response,
             destination: destination,
@@ -557,7 +637,7 @@ extension AICardGenerator {
             {
                 "title": "Business Greeting Etiquette",
                 "category": "Greeting Customs & Personal Space",
-                "nameCard": "Respect",
+                "nameCard": "\(getLocalizedNameCard(concept: "respect", destination: destination))",
                 "keyKnowledge": [
                     "🙇 Bowing depth reflects hierarchy and respect levels",
                     "🤝 Handshakes are becoming common with international colleagues",
@@ -579,7 +659,7 @@ extension AICardGenerator {
             {
                 "title": "German Business Greetings",
                 "category": "Greeting Customs & Personal Space",
-                "nameCard": "Directness",
+                "nameCard": "\(getLocalizedNameCard(concept: "directness", destination: destination))",
                 "keyKnowledge": [
                     "🤝 Firm handshake with direct eye contact is standard",
                     "🎩 Use formal titles and surnames until invited otherwise",
@@ -606,7 +686,7 @@ extension AICardGenerator {
         {
             "title": "Business Meeting Protocols",
             "category": "Business Etiquette & Meeting Protocols",
-            "nameCard": "Protocol",
+            "nameCard": "\(getLocalizedNameCard(concept: "protocol", destination: destination))",
             "keyKnowledge": [
                 "⏰ Punctuality demonstrates respect and professionalism",
                 "💳 Business card exchange follows specific cultural rules",
@@ -630,7 +710,7 @@ extension AICardGenerator {
         {
             "title": "Business Dining Etiquette",
             "category": "Dining Etiquette & Food Culture",
-            "nameCard": "Dining",
+            "nameCard": "\(getLocalizedNameCard(concept: "dining", destination: destination))",
             "keyKnowledge": [
                 "🍽️ Host always initiates eating and drinking",
                 "👍 Trying local dishes shows cultural appreciation",
@@ -658,31 +738,32 @@ extension AICardGenerator {
             // Use appropriate full name based on destination
             switch destination.lowercased() {
             case "japan":
-                nameCard = "Tanaka Hiroshi"
+                nameCard = "Tanaka Hiroshi\n田中宏"
             case "germany":
-                nameCard = "Müller Hans"
+                nameCard = "Hans Müller\nハンス・ミュラー"
             case "china":
-                nameCard = "Wang Li Ming"
+                nameCard = "Wang Li Ming\n王立明"
             case "korea":
-                nameCard = "Kim Min Jun"
+                nameCard = "Kim Min Jun\n김민준"
             default:
                 nameCard = "Executive Name"
             }
         } else if lowercaseQuery.contains("colleague") || lowercaseQuery.contains("coworker") {
             switch destination.lowercased() {
             case "japan":
-                nameCard = "Sato Yuki"
+                nameCard = "Sato Yuki\n佐藤由紀"
             case "germany":
-                nameCard = "Schmidt Anna"
+                nameCard = "Anna Schmidt\nアンナ・シュミット"
             case "china":
-                nameCard = "Liu Wei"
+                nameCard = "Liu Wei\n刘伟"
             case "korea":
-                nameCard = "Park Ji Hye"
+                nameCard = "Park Ji Hye\n박지혜"
             default:
                 nameCard = "Colleague Name"
             }
         } else {
-            nameCard = "Culture"
+            // Use localized concept name for "Culture"
+            nameCard = getLocalizedNameCard(concept: "culture", destination: destination)
         }
         
         return """
@@ -726,6 +807,293 @@ enum AIGenerationError: LocalizedError {
             return "AI model temporarily unavailable"
         case .processingFailed:
             return "Failed to process AI response"
+        }
+    }
+}
+
+// MARK: - Local Language Mapping
+extension AICardGenerator {
+    private func getLocalizedNameCard(concept: String, destination: String) -> String {
+        let lowercaseDestination = destination.lowercased()
+        let lowercaseConcept = concept.lowercased()
+        
+        switch lowercaseDestination {
+        case "japan":
+            return getJapaneseNameCard(for: lowercaseConcept)
+        case "germany":
+            return getGermanNameCard(for: lowercaseConcept)
+        case "china":
+            return getChineseNameCard(for: lowercaseConcept)
+        case "korea":
+            return getKoreanNameCard(for: lowercaseConcept)
+        default:
+            return concept // Fallback to English
+        }
+    }
+    
+    private func getJapaneseNameCard(for concept: String) -> String {
+        switch concept {
+        case "respect":
+            return "Respect\n尊敬" // Sonkei - Respect
+        case "directness":
+            return "Directness\n直接性" // Chokusetu-sei - Directness
+        case "protocol":
+            return "Protocol\n礼儀" // Reigi - Protocol/Etiquette
+        case "dining":
+            return "Dining\n食事" // Shokuji - Dining
+        case "culture":
+            return "Culture\n文化" // Bunka - Culture
+        case "hierarchy":
+            return "Hierarchy\n階層" // Kaisō - Hierarchy
+        case "communication":
+            return "Communication\nコミュニケーション" // Komyunikēshon - Communication
+        case "time":
+            return "Time\n時間" // Jikan - Time
+        case "gift":
+            return "Gift\n贈り物" // Okurimono - Gift
+        case "greeting":
+            return "Greeting\n挨拶" // Aisatsu - Greeting
+        case "business":
+            return "Business\nビジネス" // Bijinesu - Business
+        case "meeting":
+            return "Meeting\n会議" // Kaigi - Meeting
+        case "founder":
+            return "Founder\n創設者" // Sōsetsushya - Founder
+        case "pioneer":
+            return "Pioneer\n先駆者" // Senkusha - Pioneer
+        case "automotive":
+            return "Automotive\n自動車" // Jidōsha - Automotive
+        case "visionary":
+            return "Visionary\n先見の明" // Senken no mei - Visionary
+        case "innovator":
+            return "Innovator\n革新者" // Kakushinsya - Innovator
+        case "leader":
+            return "Leader\nリーダー" // Rīdā - Leader
+        case "strategic":
+            return "Strategic\n戦略的" // Senryaku-teki - Strategic
+        case "collaborative":
+            return "Collaborative\n協力的" // Kyōryoku-teki - Collaborative
+        default:
+            return concept
+        }
+    }
+    
+    private func getGermanNameCard(for concept: String) -> String {
+        switch concept {
+        case "respect":
+            return "Respect\nRespekt"
+        case "directness":
+            return "Directness\nDirektheit"
+        case "protocol":
+            return "Protocol\nProtokoll"
+        case "dining":
+            return "Dining\nSpeisen"
+        case "culture":
+            return "Culture\nKultur"
+        case "hierarchy":
+            return "Hierarchy\nHierarchie"
+        case "communication":
+            return "Communication\nKommunikation"
+        case "time":
+            return "Time\nZeit"
+        case "gift":
+            return "Gift\nGeschenk"
+        case "greeting":
+            return "Greeting\nBegrüßung"
+        case "business":
+            return "Business\nGeschäft"
+        case "meeting":
+            return "Meeting\nBesprechung"
+        default:
+            return concept
+        }
+    }
+    
+    private func getChineseNameCard(for concept: String) -> String {
+        switch concept {
+        case "respect":
+            return "Respect\n尊重" // Zūnzhòng - Respect
+        case "directness":
+            return "Directness\n直接" // Zhíjiē - Directness
+        case "protocol":
+            return "Protocol\n礼仪" // Lǐyí - Protocol/Etiquette
+        case "dining":
+            return "Dining\n用餐" // Yòngcān - Dining
+        case "culture":
+            return "Culture\n文化" // Wénhuà - Culture
+        case "hierarchy":
+            return "Hierarchy\n等级" // Děngjí - Hierarchy
+        case "communication":
+            return "Communication\n沟通" // Gōutōng - Communication
+        case "time":
+            return "Time\n时间" // Shíjiān - Time
+        case "gift":
+            return "Gift\n礼物" // Lǐwù - Gift
+        case "greeting":
+            return "Greeting\n问候" // Wènhòu - Greeting
+        case "business":
+            return "Business\n商务" // Shāngwù - Business
+        case "meeting":
+            return "Meeting\n会议" // Huìyì - Meeting
+        default:
+            return concept
+        }
+    }
+    
+    private func getKoreanNameCard(for concept: String) -> String {
+        switch concept {
+        case "respect":
+            return "Respect\n존경" // Jongyeong - Respect
+        case "directness":
+            return "Directness\n직접성" // Jikjeopseong - Directness
+        case "protocol":
+            return "Protocol\n예의" // Ye-ui - Protocol/Etiquette
+        case "dining":
+            return "Dining\n식사" // Siksa - Dining
+        case "culture":
+            return "Culture\n문화" // Munhwa - Culture
+        case "hierarchy":
+            return "Hierarchy\n계층" // Gyecheung - Hierarchy
+        case "communication":
+            return "Communication\n의사소통" // Uisasotong - Communication
+        case "time":
+            return "Time\n시간" // Sigan - Time
+        case "gift":
+            return "Gift\n선물" // Seonmul - Gift
+        case "greeting":
+            return "Greeting\n인사" // Insa - Greeting
+        case "business":
+            return "Business\n비즈니스" // Bijeuneseu - Business
+        case "meeting":
+            return "Meeting\n회의" // Hoe-ui - Meeting
+        default:
+            return concept
+        }
+    }
+    
+    private func getLocalizedPlaceName(place: String, destination: String) -> String? {
+        let lowercasePlace = place.lowercased()
+        let lowercaseDestination = destination.lowercased()
+        
+        switch lowercaseDestination {
+        case "japan":
+            return getJapanesePlaceName(for: lowercasePlace)
+        case "germany":
+            return getGermanPlaceName(for: lowercasePlace)
+        case "china":
+            return getChinesePlaceName(for: lowercasePlace)
+        case "korea":
+            return getKoreanPlaceName(for: lowercasePlace)
+        default:
+            return nil
+        }
+    }
+    
+    private func getJapanesePlaceName(for place: String) -> String? {
+        switch place {
+        case "tokyo":
+            return "Tokyo\n東京"
+        case "osaka":
+            return "Osaka\n大阪"
+        case "kyoto":
+            return "Kyoto\n京都"
+        case "yokohama":
+            return "Yokohama\n横浜"
+        case "kobe":
+            return "Kobe\n神戸"
+        case "nagoya":
+            return "Nagoya\n名古屋"
+        case "sapporo":
+            return "Sapporo\n札幌"
+        case "fukuoka":
+            return "Fukuoka\n福岡"
+        case "sendai":
+            return "Sendai\n仙台"
+        case "hiroshima":
+            return "Hiroshima\n広島"
+        default:
+            return nil
+        }
+    }
+    
+    private func getGermanPlaceName(for place: String) -> String? {
+        switch place {
+        case "berlin":
+            return "Berlin\nBerlin"
+        case "munich", "münchen":
+            return "München\nMunich"
+        case "hamburg":
+            return "Hamburg\nHamburg"
+        case "cologne", "köln":
+            return "Köln\nCologne"
+        case "frankfurt":
+            return "Frankfurt\nFrankfurt"
+        case "stuttgart":
+            return "Stuttgart\nStuttgart"
+        case "düsseldorf":
+            return "Düsseldorf\nDüsseldorf"
+        case "dortmund":
+            return "Dortmund\nDortmund"
+        case "essen":
+            return "Essen\nEssen"
+        case "dresden":
+            return "Dresden\nDresden"
+        default:
+            return nil
+        }
+    }
+    
+    private func getChinesePlaceName(for place: String) -> String? {
+        switch place {
+        case "beijing":
+            return "Beijing\n北京"
+        case "shanghai":
+            return "Shanghai\n上海"
+        case "guangzhou":
+            return "Guangzhou\n广州"
+        case "shenzhen":
+            return "Shenzhen\n深圳"
+        case "chengdu":
+            return "Chengdu\n成都"
+        case "hangzhou":
+            return "Hangzhou\n杭州"
+        case "wuhan":
+            return "Wuhan\n武汉"
+        case "xi'an", "xian":
+            return "Xi'an\n西安"
+        case "nanjing":
+            return "Nanjing\n南京"
+        case "tianjin":
+            return "Tianjin\n天津"
+        default:
+            return nil
+        }
+    }
+    
+    private func getKoreanPlaceName(for place: String) -> String? {
+        switch place {
+        case "seoul":
+            return "Seoul\n서울"
+        case "busan":
+            return "Busan\n부산"
+        case "incheon":
+            return "Incheon\n인천"
+        case "daegu":
+            return "Daegu\n대구"
+        case "daejeon":
+            return "Daejeon\n대전"
+        case "gwangju":
+            return "Gwangju\n광주"
+        case "suwon":
+            return "Suwon\n수원"
+        case "ulsan":
+            return "Ulsan\n울산"
+        case "changwon":
+            return "Changwon\n창원"
+        case "goyang":
+            return "Goyang\n고양"
+        default:
+            return nil
         }
     }
 } 

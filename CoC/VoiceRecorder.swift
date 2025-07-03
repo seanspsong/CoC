@@ -365,4 +365,88 @@ enum RecordingError: LocalizedError {
             return "Audio engine failed to start"
         }
     }
+}
+
+// MARK: - Text-to-Speech Manager
+import AVFoundation
+
+@MainActor
+class TextToSpeechManager: ObservableObject {
+    private let synthesizer = AVSpeechSynthesizer()
+    @Published var isSpeaking = false
+    
+    func speak(text: String, language: String = "ja-JP") {
+        print("🔊 [TTS] Starting speech - Text: '\(text)', Language: '\(language)'")
+        
+        // Stop any current speech
+        stop()
+        
+        let utterance = AVSpeechUtterance(string: text)
+        
+        // Set language based on destination
+        let selectedLanguage: String
+        switch language.lowercased() {
+        case "japan", "japanese", "ja", "ja-jp":
+            selectedLanguage = "ja-JP"
+        case "germany", "german", "de", "de-de":
+            selectedLanguage = "de-DE"
+        case "china", "chinese", "zh", "zh-cn":
+            selectedLanguage = "zh-CN"
+        case "korea", "korean", "ko", "ko-kr":
+            selectedLanguage = "ko-KR"
+        default:
+            selectedLanguage = "en-US"
+        }
+        
+        // Try to get voice for selected language, fallback to default if not available
+        if let voice = AVSpeechSynthesisVoice(language: selectedLanguage) {
+            utterance.voice = voice
+            print("🔊 [TTS] Selected voice language: \(selectedLanguage)")
+            print("🔊 [TTS] Voice description: \(voice.name)")
+        } else {
+            // Fallback to default voice
+            utterance.voice = AVSpeechSynthesisVoice(language: "en-US")
+            print("⚠️ [TTS] Voice for \(selectedLanguage) not available, falling back to en-US")
+        }
+        
+        utterance.rate = 0.5 // Slightly slower for learning
+        utterance.pitchMultiplier = 1.0
+        utterance.volume = 1.0
+        
+        isSpeaking = true
+        synthesizer.speak(utterance)
+        
+        // Monitor speech completion
+        DispatchQueue.main.asyncAfter(deadline: .now() + Double(text.count) * 0.1 + 2.0) {
+            self.isSpeaking = false
+        }
+    }
+    
+    func stop() {
+        synthesizer.stopSpeaking(at: .immediate)
+        isSpeaking = false
+    }
+    
+    // Extract local language text (second line) from bilingual name
+    func extractLocalLanguageText(from bilingualText: String) -> String {
+        let lines = bilingualText.components(separatedBy: "\n")
+        // Return second line (local language), fallback to first if only one line
+        return lines.count > 1 ? lines[1] : lines.first ?? bilingualText
+    }
+    
+    // Determine language code from destination
+    func getLanguageCode(for destination: String) -> String {
+        switch destination.lowercased() {
+        case "japan":
+            return "ja-JP"
+        case "germany":
+            return "de-DE"
+        case "china":
+            return "zh-CN"
+        case "korea":
+            return "ko-KR"
+        default:
+            return "en-US"
+        }
+    }
 } 

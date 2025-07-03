@@ -62,7 +62,9 @@ struct CulturalCard: Identifiable, Codable {
     
     // AI-Generated Card Properties
     var category: CulturalCategory?
-    var nameCard: String?           // Section 1: One word/name (big bold)
+    var nameCard: String?           // Legacy field - kept for backward compatibility
+    var nameCardApp: String?        // Section 1a: Name in app language (English)
+    var nameCardLocal: String?      // Section 1b: Name in destination local language
     var keyKnowledge: [String]?     // Section 2: Key Knowledge (bullet points)
     var culturalInsights: String?   // Section 3: Cultural Insights (text paragraph)
     var question: String?           // Original user question that generated this card
@@ -76,7 +78,7 @@ struct CulturalCard: Identifiable, Codable {
     // Custom CodingKeys to exclude id and computed properties from encoding/decoding
     private enum CodingKeys: String, CodingKey {
         case type, title, content, dateAdded
-        case category, nameCard, keyKnowledge, culturalInsights, question, isAIGenerated, destination
+        case category, nameCard, nameCardApp, nameCardLocal, keyKnowledge, culturalInsights, question, isAIGenerated, destination
     }
     
     // Custom decoder to handle id initialization
@@ -89,6 +91,8 @@ struct CulturalCard: Identifiable, Codable {
         self.dateAdded = try container.decode(Date.self, forKey: .dateAdded)
         self.category = try container.decodeIfPresent(CulturalCategory.self, forKey: .category)
         self.nameCard = try container.decodeIfPresent(String.self, forKey: .nameCard)
+        self.nameCardApp = try container.decodeIfPresent(String.self, forKey: .nameCardApp)
+        self.nameCardLocal = try container.decodeIfPresent(String.self, forKey: .nameCardLocal)
         self.keyKnowledge = try container.decodeIfPresent([String].self, forKey: .keyKnowledge)
         self.culturalInsights = try container.decodeIfPresent(String.self, forKey: .culturalInsights)
         self.question = try container.decodeIfPresent(String.self, forKey: .question)
@@ -105,6 +109,8 @@ struct CulturalCard: Identifiable, Codable {
         self.isAIGenerated = false
         self.category = nil
         self.nameCard = nil
+        self.nameCardApp = nil
+        self.nameCardLocal = nil
         self.keyKnowledge = nil
         self.culturalInsights = nil
         self.question = nil
@@ -115,7 +121,8 @@ struct CulturalCard: Identifiable, Codable {
     init(
         title: String,
         category: CulturalCategory,
-        nameCard: String,
+        nameCardApp: String?,
+        nameCardLocal: String?,
         keyKnowledge: [String],
         culturalInsights: String,
         destination: String,
@@ -125,7 +132,9 @@ struct CulturalCard: Identifiable, Codable {
         self.title = title
         self.content = culturalInsights // Use cultural insights as primary content for legacy compatibility
         self.category = category
-        self.nameCard = nameCard
+        self.nameCard = nameCardApp // Legacy compatibility - use app language name
+        self.nameCardApp = nameCardApp
+        self.nameCardLocal = nameCardLocal
         self.keyKnowledge = keyKnowledge
         self.culturalInsights = culturalInsights
         self.question = question

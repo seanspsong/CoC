@@ -784,6 +784,7 @@ struct GeneratedCardContentView: View {
     let card: CulturalCard
     let destination: Destination
     @State private var isExpanded = false
+    @StateObject private var ttsManager = TextToSpeechManager()
     
     var body: some View {
         ScrollView {
@@ -809,7 +810,7 @@ struct GeneratedCardContentView: View {
                 }
                 
                 // NAME CARD Section
-                if let nameCard = card.nameCard {
+                if let nameCardApp = card.nameCardApp {
                     VStack(alignment: .leading, spacing: 8) {
                         Text("NAME CARD")
                             .font(.caption)
@@ -818,9 +819,43 @@ struct GeneratedCardContentView: View {
                             .textCase(.uppercase)
                             .tracking(1.2)
                         
-                        Text(nameCard)
-                            .font(.system(size: 32, weight: .bold, design: .default))
-                            .foregroundColor(.primary)
+                        HStack(alignment: .top, spacing: 12) {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(nameCardApp)
+                                    .font(.system(size: 32, weight: .bold, design: .default))
+                                    .foregroundColor(.primary)
+                                    .multilineTextAlignment(.leading)
+                                
+                                if let nameCardLocal = card.nameCardLocal {
+                                    Text(nameCardLocal)
+                                        .font(.system(size: 32, weight: .bold, design: .default))
+                                        .foregroundColor(.primary)
+                                        .multilineTextAlignment(.leading)
+                                }
+                            }
+                            
+                            // Speaker button for pronunciation (only show if local language is available)
+                            if let nameCardLocal = card.nameCardLocal {
+                                Button(action: {
+                                    let languageCode = ttsManager.getLanguageCode(for: destination.name)
+                                    print("🔊 [UI] Speaking - Destination: '\(destination.name)', Local Name: '\(nameCardLocal)'")
+                                    print("🔊 [UI] Language code: '\(languageCode)'")
+                                    ttsManager.speak(text: nameCardLocal, language: languageCode)
+                                }) {
+                                    Image(systemName: ttsManager.isSpeaking ? "speaker.wave.3.fill" : "speaker.2.fill")
+                                        .font(.system(size: 20, weight: .medium))
+                                        .foregroundColor(.cocPurple)
+                                        .frame(width: 32, height: 32)
+                                        .background(Color(.systemGray6))
+                                        .clipShape(Circle())
+                                        .opacity(ttsManager.isSpeaking ? 0.7 : 1.0)
+                                        .scaleEffect(ttsManager.isSpeaking ? 1.1 : 1.0)
+                                        .animation(.easeInOut(duration: 0.2), value: ttsManager.isSpeaking)
+                                }
+                                .disabled(ttsManager.isSpeaking)
+                                .padding(.top, 4) // Align with text baseline
+                            }
+                        }
                     }
                 }
                 
@@ -889,7 +924,7 @@ struct GeneratedCardContentView: View {
                 }
                 
                 // Legacy fallback: Show old format if new format not available
-                if card.nameCard == nil && card.keyKnowledge == nil && card.culturalInsights == nil {
+                if card.nameCardApp == nil && card.nameCardLocal == nil && card.keyKnowledge == nil && card.culturalInsights == nil {
                     VStack(alignment: .leading, spacing: 16) {
                         if let insight = card.insight {
                             Text(insight)
@@ -1113,8 +1148,8 @@ struct CulturalCardView: View {
     
     // Display title: Use Name Card for AI-generated cards, category title for others
     private var cardDisplayTitle: String {
-        if card.isAIGenerated, let nameCard = card.nameCard, !nameCard.isEmpty {
-            return nameCard
+        if card.isAIGenerated, let nameCardApp = card.nameCardApp, !nameCardApp.isEmpty {
+            return nameCardApp
         } else {
             return card.type.title
         }
@@ -1124,7 +1159,7 @@ struct CulturalCardView: View {
     private var contextualEmoji: String {
         // For AI-generated cards, determine emoji based on nameCard or title content
         if card.isAIGenerated {
-            let searchText = (card.nameCard ?? card.title).lowercased()
+            let searchText = (card.nameCardApp ?? card.title).lowercased()
             
             // Company/Brand emojis
             if searchText.contains("sony") {
