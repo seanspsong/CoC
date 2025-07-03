@@ -355,12 +355,41 @@ A log to track the development process, vibes, achievements, and lessons learned
 
 ---
 
+### VL0019
+- **Time**: 18:50
+- **Date**: 2025-01-03
+- **Vibe Summary**: Major AI architecture refactoring - migrated from Apple FoundationModels to ChatGPT 4.1 API with country-specific context system. This represents a fundamental shift to more powerful, cloud-based AI generation for enhanced cultural accuracy and reliability.
+- **Achievement**: 
+  - ✅ **BREAKING CHANGE**: Completely replaced Apple on-device AI with ChatGPT 4.1 API integration
+  - ✅ **Country Context System**: Added country field to Destination model for targeted cultural insights
+  - ✅ **Structured JSON API**: Implemented proper JSON schema for consistent ChatGPT responses
+  - ✅ **Enhanced System Prompts**: Country-specific prompts for more accurate cultural generation
+  - ✅ **Comprehensive Error Handling**: Added proper API error handling and progress tracking
+  - ✅ **Backwards Compatibility**: Maintained compatibility with existing destination data
+  - ✅ **Data Model Migration**: Updated sample data and added custom decoder for smooth transition
+  - ✅ **Removed Dependencies**: Eliminated Apple FoundationModels dependency entirely
+  - ✅ **API Configuration**: Added support for OpenAI API key configuration
+  - ✅ **Enhanced Debugging**: Comprehensive logging throughout AI generation pipeline
+  - ✅ **Successful Build**: All compilation errors resolved, app builds successfully
+- **Lesson Learnt**: Major refactoring requires careful dependency management and backwards compatibility. Moving from on-device to cloud AI provides significantly more powerful cultural intelligence but requires proper API integration patterns. Country-specific context dramatically improves AI output relevance and accuracy.
+- **Technical Impact**: 
+  - 🔄 **Architecture Change**: On-device AI → Cloud-based ChatGPT 4.1
+  - 📊 **Data Enhancement**: Added country field for cultural context
+  - 🛠️ **API Integration**: Full ChatGPT API implementation with structured responses
+  - 🧠 **Intelligence Boost**: More accurate, country-specific cultural insights
+  - 🔧 **Error Handling**: Robust error management for network operations
+  - 📝 **Documentation**: Enhanced code documentation and logging
+- **Files Modified**: AICardGenerator.swift (complete rewrite), Models.swift (country field), ContentView.swift (API integration)
+- **Status**: ✅ **COMPLETE** - Ready for ChatGPT-powered cultural generation with country context
+
+---
+
 ## Project Status
-🎯 **Current State**: Fully functional cultural learning app with working bilingual display system, enhanced TTS pronunciation focused on local language learning, immersive full-screen card viewing experience, comprehensive multilingual support, improved UX with close buttons, country selection interface for destination creation, swipe-to-delete functionality, and optimally positioned floating title
-📱 **Platform**: iOS (SwiftUI, iOS 17.0+)
-🏗️ **Architecture**: MVVM with AI-powered voice processing, comprehensive error handling, multilingual localization system, focused text-to-speech integration, curated country selection workflow, and professional floating UI elements
-🌟 **Key Features**: Working bilingual name cards (nameCardApp/nameCardLocal), focused TTS pronunciation (local language only), comprehensive Name Card localization (Japanese, German, Chinese, Korean), expandable cultural cards (90% screen height), scrollable content with proper clipping, live transcription display, voice-to-card generation, purple color theme (#8A2BE2), professional card design, close buttons on all modal interfaces, specific company founder recognition, country selection modal with 16 popular destinations, swipe-to-delete for destinations, floating title between action buttons
-✨ **Recent Enhancement**: Optimized title positioning by floating "CoC: Cup of Culture" between + button and settings button for better visual balance and cleaner interface design
+🎯 **Current State**: Fully functional cultural learning app with ChatGPT 4.1-powered AI generation, country-specific cultural intelligence, working bilingual display system, enhanced TTS pronunciation focused on local language learning, immersive full-screen card viewing experience, comprehensive multilingual support, improved UX with close buttons, country selection interface for destination creation, swipe-to-delete functionality, and optimally positioned floating title
+📱 **Platform**: iOS (SwiftUI, iOS 17.0+)  
+🏗️ **Architecture**: MVVM with ChatGPT 4.1 AI integration, country-specific context system, comprehensive error handling, multilingual localization system, focused text-to-speech integration, curated country selection workflow, and professional floating UI elements
+🌟 **Key Features**: ChatGPT 4.1-powered cultural generation with country context, working bilingual name cards (nameCardApp/nameCardLocal), focused TTS pronunciation (local language only), comprehensive Name Card localization (Japanese, German, Chinese, Korean), expandable cultural cards (90% screen height), scrollable content with proper clipping, live transcription display, voice-to-card generation, purple color theme (#8A2BE2), professional card design, close buttons on all modal interfaces, specific company founder recognition, country selection modal with 16 popular destinations, swipe-to-delete for destinations, floating title between action buttons
+✨ **Recent Enhancement**: Major AI architecture refactoring - migrated from Apple FoundationModels to ChatGPT 4.1 API with country-specific context system for enhanced cultural accuracy and reliability
 
 ## Next Steps
 - [x] Implement consistent purple color theme across the app
@@ -371,11 +400,13 @@ A log to track the development process, vibes, achievements, and lessons learned
 - [x] Implement local language support for Name Card content
 - [x] Add text-to-speech pronunciation functionality for local language names
 - [x] Optimize bilingual format for better readability and focused TTS pronunciation
-- [ ] Enhance AI card generation with more sophisticated prompts
+- [x] Integrate with real LLM services (ChatGPT 4.1 API with country-specific context)
+- [ ] Add API key configuration interface and secure storage
+- [ ] Enhance AI prompts with more sophisticated cultural intelligence patterns
 - [ ] Implement destination and card creation flows (manual entry)
 - [ ] Add persistent data storage (Core Data/SwiftData)
 - [ ] Build comprehensive cultural content library
 - [ ] Add search and filtering capabilities within generated cards
 - [ ] Implement offline functionality with cached AI responses
 - [ ] Add user preferences and voice recording customization options
-- [ ] Integrate with real LLM services (GPT-4, Claude, etc.) 
+- [ ] Add rate limiting and API usage optimization for ChatGPT calls 
