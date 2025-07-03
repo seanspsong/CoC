@@ -130,7 +130,7 @@ struct ContentView: View {
     @State private var selectedDestination: Destination?
     @State private var selectedCard: CulturalCard?
     @State private var showingVoiceRecording = false
-    @State private var showingInputSelection = false
+
     @State private var showingImagePicker = false
     @State private var showingCamera = false
     @State private var showingCountrySelection = false
@@ -207,6 +207,16 @@ struct ContentView: View {
                             // Handle API key error
                             showingAPIKeyAlert = true
                             showingVoiceRecording = false
+                        },
+                        onCameraSelected: {
+                            // Handle camera selection
+                            showingVoiceRecording = false
+                            showingCamera = true
+                        },
+                        onPhotoSelected: {
+                            // Handle photo selection
+                            showingVoiceRecording = false
+                            showingImagePicker = true
                         }
                     )
                     .zIndex(1)
@@ -288,28 +298,23 @@ struct ContentView: View {
         .sheet(isPresented: $showingSettings) {
             SettingsView()
         }
-        .sheet(isPresented: $showingInputSelection) {
-            InputSelectionView(
-                onVoiceSelected: {
-                    showingInputSelection = false
-                    showingVoiceRecording = true
-                },
-                onCameraSelected: {
-                    showingInputSelection = false
-                    showingCamera = true
-                },
-                onPhotoSelected: {
-                    showingInputSelection = false
-                    showingImagePicker = true
-                },
-                onCancel: {
-                    showingInputSelection = false
-                }
-            )
-        }
+
         .sheet(isPresented: $showingImagePicker) {
-            PhotosPicker(selection: $selectedPhotoItem, matching: .images) {
-                Text("Select Photo")
+            NavigationView {
+                PhotosPicker(selection: $selectedPhotoItem, matching: .images) {
+                    Text("Select Photo")
+                        .foregroundColor(.cocPurple)
+                }
+                .navigationTitle("Choose Photo")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .navigationBarTrailing) {
+                        Button("Cancel") {
+                            showingImagePicker = false
+                        }
+                        .foregroundColor(.cocPurple)
+                    }
+                }
             }
         }
         .fullScreenCover(isPresented: $showingCamera) {
@@ -372,9 +377,9 @@ struct ContentView: View {
     }
     
     private func addNewCard() {
-        // Show input method selection
+        // Show voice recording interface with all input options
         withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) {
-            showingInputSelection = true
+            showingVoiceRecording = true
         }
     }
     
@@ -431,140 +436,6 @@ struct ContentView: View {
                 selectedPhotoItem = nil
             }
         }
-    }
-}
-
-// MARK: - Input Selection View
-struct InputSelectionView: View {
-    let onVoiceSelected: () -> Void
-    let onCameraSelected: () -> Void
-    let onPhotoSelected: () -> Void
-    let onCancel: () -> Void
-    
-    var body: some View {
-        NavigationView {
-            VStack(spacing: 30) {
-                VStack(spacing: 16) {
-                    Text("Add Cultural Insight")
-                        .font(.title2)
-                        .fontWeight(.bold)
-                    
-                    Text("Choose how you'd like to capture your cultural observation")
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                        .multilineTextAlignment(.center)
-                }
-                .padding(.top, 40)
-                
-                VStack(spacing: 20) {
-                    // Voice Input Option
-                    InputOptionButton(
-                        icon: "🎤",
-                        title: "Voice Recording",
-                        subtitle: "Describe what you want to learn about",
-                        color: .cocPurple
-                    ) {
-                        onVoiceSelected()
-                    }
-                    
-                    // Camera Option
-                    InputOptionButton(
-                        icon: "📷",
-                        title: "Take Photo",
-                        subtitle: "Capture a cultural moment or scene",
-                        color: .blue
-                    ) {
-                        onCameraSelected()
-                    }
-                    
-                    // Photo Library Option
-                    InputOptionButton(
-                        icon: "🖼️",
-                        title: "Choose Photo",
-                        subtitle: "Select from your photo library",
-                        color: .green
-                    ) {
-                        onPhotoSelected()
-                    }
-                }
-                .padding(.horizontal, 20)
-                
-                Spacer()
-            }
-            .navigationTitle("New Insight")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Cancel") {
-                        onCancel()
-                    }
-                    .foregroundColor(.cocPurple)
-                }
-            }
-        }
-    }
-}
-
-// MARK: - Input Option Button
-struct InputOptionButton: View {
-    let icon: String
-    let title: String
-    let subtitle: String
-    let color: Color
-    let action: () -> Void
-    @State private var isPressed = false
-    
-    var body: some View {
-        Button(action: {
-            withAnimation(.easeInOut(duration: 0.1)) {
-                isPressed = true
-            }
-            
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                withAnimation(.easeInOut(duration: 0.1)) {
-                    isPressed = false
-                }
-                action()
-            }
-        }) {
-            HStack(spacing: 16) {
-                Text(icon)
-                    .font(.system(size: 32))
-                    .frame(width: 50, height: 50)
-                    .background(color.opacity(0.1))
-                    .clipShape(Circle())
-                
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(title)
-                        .font(.headline)
-                        .fontWeight(.semibold)
-                        .foregroundColor(.primary)
-                    
-                    Text(subtitle)
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                }
-                
-                Spacer()
-                
-                Image(systemName: "chevron.right")
-                    .foregroundColor(color)
-                    .font(.system(size: 14, weight: .medium))
-            }
-            .padding(.horizontal, 20)
-            .padding(.vertical, 16)
-            .background {
-                RoundedRectangle(cornerRadius: 16)
-                    .fill(Color(.systemBackground))
-                    .shadow(color: .black.opacity(isPressed ? 0.15 : 0.08), radius: isPressed ? 12 : 8, x: 0, y: isPressed ? 6 : 4)
-            }
-            .overlay {
-                RoundedRectangle(cornerRadius: 16)
-                    .stroke(isPressed ? color.opacity(0.3) : Color(.systemGray5), lineWidth: isPressed ? 2.0 : 0.5)
-            }
-            .scaleEffect(isPressed ? 0.97 : 1.0)
-        }
-        .buttonStyle(PlainButtonStyle())
     }
 }
 
@@ -923,6 +794,8 @@ struct VoiceRecordingCardView: View {
     let onCardGenerated: (CulturalCard) -> Void
     let onCancel: () -> Void
     let onAPIKeyError: () -> Void
+    let onCameraSelected: () -> Void
+    let onPhotoSelected: () -> Void
     
     @State private var showingGeneratedCard = false
     @State private var generatedCard: CulturalCard?
@@ -964,7 +837,9 @@ struct VoiceRecordingCardView: View {
                         voiceRecorder: voiceRecorder,
                         aiGenerator: aiGenerator,
                         recordingState: $recordingState,
-                        waveformTrigger: $waveformTrigger
+                        waveformTrigger: $waveformTrigger,
+                        onCameraSelected: onCameraSelected,
+                        onPhotoSelected: onPhotoSelected
                     )
                 }
                 
@@ -1085,6 +960,8 @@ struct EmptyCardWithMicrophoneView: View {
     @ObservedObject var aiGenerator: AICardGenerator
     @Binding var recordingState: VoiceRecordingCardView.RecordingState
     @Binding var waveformTrigger: Bool
+    let onCameraSelected: () -> Void
+    let onPhotoSelected: () -> Void
     
     var body: some View {
         VStack(spacing: 0) {
@@ -1216,27 +1093,93 @@ struct EmptyCardWithMicrophoneView: View {
             
             Spacer()
             
-            // Bottom Action Button
+            // Bottom Action Buttons
             VStack(spacing: 16) {
-                if recordingState == .ready || recordingState == .recording {
-                    // Microphone Button (handles both start and stop)
+                if recordingState == .ready {
+                    // Three input buttons: Camera, Microphone, Photo
+                    HStack(spacing: 32) {
+                        // Camera Button
+                        InputActionButton(
+                            icon: "📷",
+                            title: "Camera",
+                            color: .blue,
+                            action: onCameraSelected
+                        )
+                        
+                        // Microphone Button (larger, in center)
+                        MicrophoneButton(
+                            isRecording: voiceRecorder.isRecording,
+                            hasPermission: voiceRecorder.hasPermission
+                        ) {
+                            voiceRecorder.startRecording()
+                            recordingState = .recording
+                        }
+                        
+                        // Photo Button
+                        InputActionButton(
+                            icon: "🖼️",
+                            title: "Photo",
+                            color: .green,
+                            action: onPhotoSelected
+                        )
+                    }
+                } else if recordingState == .recording {
+                    // Only show microphone button when recording
                     MicrophoneButton(
                         isRecording: voiceRecorder.isRecording,
                         hasPermission: voiceRecorder.hasPermission
                     ) {
-                        if voiceRecorder.isRecording {
-                            voiceRecorder.stopRecording()
-                            recordingState = .processing
-                        } else {
-                            voiceRecorder.startRecording()
-                            recordingState = .recording
-                        }
+                        voiceRecorder.stopRecording()
+                        recordingState = .processing
                     }
                 }
             }
             .padding(.bottom, 30)
         }
         .frame(minHeight: 400)
+    }
+}
+
+// MARK: - Input Action Button
+struct InputActionButton: View {
+    let icon: String
+    let title: String
+    let color: Color
+    let action: () -> Void
+    @State private var isPressed = false
+    
+    var body: some View {
+        VStack(spacing: 8) {
+            Button(action: {
+                withAnimation(.easeInOut(duration: 0.1)) {
+                    isPressed = true
+                }
+                
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    withAnimation(.easeInOut(duration: 0.1)) {
+                        isPressed = false
+                    }
+                    action()
+                }
+            }) {
+                Text(icon)
+                    .font(.system(size: 28))
+                    .frame(width: 56, height: 56)
+                    .background(color.opacity(0.1))
+                    .clipShape(Circle())
+                    .overlay {
+                        Circle()
+                            .stroke(color.opacity(0.3), lineWidth: 2)
+                    }
+                    .scaleEffect(isPressed ? 0.95 : 1.0)
+            }
+            .buttonStyle(PlainButtonStyle())
+            
+            Text(title)
+                .font(.caption)
+                .fontWeight(.medium)
+                .foregroundColor(color)
+        }
     }
 }
 
