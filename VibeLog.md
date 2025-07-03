@@ -286,12 +286,29 @@ A log to track the development process, vibes, achievements, and lessons learned
 
 ---
 
+### VL0015
+- **Time**: 17:50
+- **Date**: 2025-01-03
+- **Vibe Summary**: Critical bug fix for bilingual name card display system. Fixed missing founder keyword detection and parsing logic to properly display both English and local language names with working speaker button functionality.
+- **Achievement**: 
+  - ✅ Fixed missing "founder" keyword check in AI generation (was only checking ceo/executive/manager)
+  - ✅ Added specific company founder recognition (Sony=Akio Morita/盛田昭夫, Toyota=Kiichiro Toyoda/豊田喜一郎, Honda=Soichiro Honda/本田宗一郎, Nintendo=Fusajiro Yamauchi/山内房治郎, Panasonic=Konosuke Matsushita/松下幸之助)
+  - ✅ Enhanced nameCard parsing logic with comprehensive debug logging
+  - ✅ Fixed bilingual format parsing to properly split into nameCardApp and nameCardLocal fields
+  - ✅ Restored speaker button functionality for TTS pronunciation of local language names
+  - ✅ Verified proper line separation display (English first line, local language second line)
+  - ✅ Fixed the core issue where "The founder of Sony" was showing generic "Tanaka Hiroshi" instead of actual founder "Akio Morita"
+  - ✅ Ensured TTS pronounces only the local language text (second line) for focused learning
+- **Lesson Learnt**: Missing keyword detection in AI generation can cause fundamental feature failures. Comprehensive debugging is essential when working with string parsing and UI state management. Swift string splitting with proper fallback handling prevents UI display issues. AI generation logic must cover all expected query patterns (founder, ceo, executive, manager) to provide consistent user experience. Specific company recognition creates more valuable and accurate cultural learning content. Debug logging in parsing logic helps identify exact failure points in complex data transformation pipelines.
+
+---
+
 ## Project Status
-🎯 **Current State**: Fully functional cultural learning app with separate bilingual display variables, enhanced TTS pronunciation focused on local language learning, immersive full-screen card viewing experience, comprehensive multilingual support, and improved UX with close buttons
+🎯 **Current State**: Fully functional cultural learning app with working bilingual display system, enhanced TTS pronunciation focused on local language learning, immersive full-screen card viewing experience, comprehensive multilingual support, and improved UX with close buttons
 📱 **Platform**: iOS (SwiftUI, iOS 17.0+)
 🏗️ **Architecture**: MVVM with AI-powered voice processing, comprehensive error handling, multilingual localization system, and focused text-to-speech integration
-🌟 **Key Features**: Separate bilingual variables (nameCardApp/nameCardLocal), focused TTS pronunciation (local language only), comprehensive Name Card localization (Japanese, German, Chinese, Korean), expandable cultural cards (90% screen height), scrollable content with proper clipping, live transcription display, voice-to-card generation, purple color theme (#8A2BE2), professional card design, close buttons on all modal interfaces
-✨ **Recent Enhancement**: Added close buttons to both cultural card detail view and voice recording interface, providing consistent exit options and improved user experience across all modal interfaces
+🌟 **Key Features**: Working bilingual name cards (nameCardApp/nameCardLocal), focused TTS pronunciation (local language only), comprehensive Name Card localization (Japanese, German, Chinese, Korean), expandable cultural cards (90% screen height), scrollable content with proper clipping, live transcription display, voice-to-card generation, purple color theme (#8A2BE2), professional card design, close buttons on all modal interfaces, specific company founder recognition
+✨ **Recent Enhancement**: Fixed critical bilingual display bugs - name cards now properly show both English and local language names on separate lines with working speaker buttons for pronunciation
 
 ## Next Steps
 - [x] Implement consistent purple color theme across the app
