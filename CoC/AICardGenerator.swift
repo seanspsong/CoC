@@ -219,21 +219,33 @@ class AICardGenerator: ObservableObject {
         var nameCardLocal: String? = nil
         
         let nameCard = response.nameCard
+        print("🔍 [AICardGenerator] Raw nameCard from response: '\(nameCard)'")
+        
         let lines = nameCard.components(separatedBy: "\n")
+        print("🔍 [AICardGenerator] Split into \(lines.count) lines: \(lines)")
+        
         if lines.count >= 2 {
             nameCardApp = lines[0]
             nameCardLocal = lines[1]
+            print("🔍 [AICardGenerator] Set nameCardApp: '\(nameCardApp!)'")
+            print("🔍 [AICardGenerator] Set nameCardLocal: '\(nameCardLocal!)'")
         } else {
             // If we only got one line, try to get localized version for concepts
             nameCardApp = nameCard
+            print("🔍 [AICardGenerator] Single line, trying to get localized version for: '\(nameCard)'")
+            
             // Try to get localized version if it's a concept
             let localizedVersion = getLocalizedNameCard(concept: nameCard, destination: destination)
+            print("🔍 [AICardGenerator] Localized version: '\(localizedVersion)'")
+            
             let localizedLines = localizedVersion.components(separatedBy: "\n")
             if localizedLines.count >= 2 {
                 nameCardApp = localizedLines[0]
                 nameCardLocal = localizedLines[1]
+                print("🔍 [AICardGenerator] Used localized - App: '\(nameCardApp!)', Local: '\(nameCardLocal!)'")
             } else {
                 nameCardLocal = nil
+                print("🔍 [AICardGenerator] No localized version found, nameCardLocal = nil")
             }
         }
         
@@ -747,6 +759,41 @@ extension AICardGenerator {
                 nameCard = "Kim Min Jun\n김민준"
             default:
                 nameCard = "Executive Name"
+            }
+        } else if lowercaseQuery.contains("founder") {
+            print("🔍 [AICardGenerator] Detected founder query: '\(query)'")
+            
+            // Check for specific companies first
+            if lowercaseQuery.contains("sony") {
+                nameCard = "Akio Morita\n盛田昭夫"
+                print("🔍 [AICardGenerator] Using Sony founder: '\(nameCard)'")
+            } else if lowercaseQuery.contains("toyota") {
+                nameCard = "Kiichiro Toyoda\n豊田喜一郎"
+                print("🔍 [AICardGenerator] Using Toyota founder: '\(nameCard)'")
+            } else if lowercaseQuery.contains("honda") {
+                nameCard = "Soichiro Honda\n本田宗一郎"
+                print("🔍 [AICardGenerator] Using Honda founder: '\(nameCard)'")
+            } else if lowercaseQuery.contains("nintendo") {
+                nameCard = "Fusajiro Yamauchi\n山内房治郎"
+                print("🔍 [AICardGenerator] Using Nintendo founder: '\(nameCard)'")
+            } else if lowercaseQuery.contains("panasonic") {
+                nameCard = "Konosuke Matsushita\n松下幸之助"
+                print("🔍 [AICardGenerator] Using Panasonic founder: '\(nameCard)'")
+            } else {
+                // Generic founder names by country
+                switch destination.lowercased() {
+                case "japan":
+                    nameCard = "Tanaka Hiroshi\n田中宏"
+                case "germany":
+                    nameCard = "Hans Müller\nハンス・ミュラー"
+                case "china":
+                    nameCard = "Wang Li Ming\n王立明"
+                case "korea":
+                    nameCard = "Kim Min Jun\n김민준"
+                default:
+                    nameCard = "Executive Name"
+                }
+                print("🔍 [AICardGenerator] Using generic founder: '\(nameCard)'")
             }
         } else if lowercaseQuery.contains("colleague") || lowercaseQuery.contains("coworker") {
             switch destination.lowercased() {

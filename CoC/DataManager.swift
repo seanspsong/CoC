@@ -49,6 +49,9 @@ class DataManager: ObservableObject {
             destinations = try decoder.decode([Destination].self, from: data)
             print("✅ [DataManager] Successfully loaded \(destinations.count) destinations")
             
+            // Migrate old format cards to new format
+            migrateCardsToNewFormat()
+            
             // Log loaded destinations
             for destination in destinations {
                 print("   - \(destination.name): \(destination.culturalCards.count) cards")
@@ -165,6 +168,145 @@ class DataManager: ObservableObject {
         destinations = Destination.sampleData
         saveDestinations() // Save sample data to persistent storage
         print("✅ [DataManager] Sample data loaded and saved")
+    }
+    
+    // MARK: - Migration
+    private func migrateCardsToNewFormat() {
+        print("🔄 [DataManager] Checking for cards that need migration to new format...")
+        
+        var migrationCount = 0
+        
+        for destinationIndex in destinations.indices {
+            let destination = destinations[destinationIndex]
+            
+            for cardIndex in destinations[destinationIndex].culturalCards.indices {
+                var card = destinations[destinationIndex].culturalCards[cardIndex]
+                
+                // Check if card needs migration (old format with no nameCardApp/nameCardLocal)
+                if card.nameCardApp == nil && card.nameCardLocal == nil && !card.isAIGenerated {
+                    print("🔧 [DataManager] Migrating card: '\(card.title)' in \(destination.name)")
+                    
+                    // Create appropriate bilingual name cards based on title
+                    let (nameCardApp, nameCardLocal) = generateNameCardForMigration(
+                        title: card.title, 
+                        destination: destination.name
+                    )
+                    
+                    // Create key knowledge from content
+                    let keyKnowledge = generateKeyKnowledgeFromContent(card.content)
+                    
+                    // Determine appropriate category
+                    let category = determineCategoryFromType(card.type)
+                    
+                    // Create migrated card
+                    let migratedCard = CulturalCard(
+                        title: card.title,
+                        category: category,
+                        nameCardApp: nameCardApp,
+                        nameCardLocal: nameCardLocal,
+                        keyKnowledge: keyKnowledge,
+                        culturalInsights: card.content,
+                        destination: destination.name
+                    )
+                    
+                    // Replace the old card with migrated version
+                    destinations[destinationIndex].culturalCards[cardIndex] = migratedCard
+                    migrationCount += 1
+                    
+                    print("✅ [DataManager] Migrated: '\(card.title)' -> App: '\(nameCardApp)', Local: '\(nameCardLocal ?? "nil")'")
+                }
+            }
+        }
+        
+        if migrationCount > 0 {
+            print("✅ [DataManager] Migration completed: \(migrationCount) cards migrated to new format")
+            saveDestinations() // Save the migrated data
+        } else {
+            print("ℹ️ [DataManager] No cards needed migration")
+        }
+    }
+    
+    private func generateNameCardForMigration(title: String, destination: String) -> (String, String?) {
+        let lowercaseTitle = title.lowercased()
+        
+        // Map titles to appropriate concepts
+        if lowercaseTitle.contains("business card") || lowercaseTitle.contains("protocol") {
+            return ("Protocol", getLocalizedConcept("protocol", for: destination))
+        } else if lowercaseTitle.contains("bow") || lowercaseTitle.contains("respect") || lowercaseTitle.contains("greeting") {
+            return ("Respect", getLocalizedConcept("respect", for: destination))
+        } else if lowercaseTitle.contains("punctuality") || lowercaseTitle.contains("time") {
+            return ("Time", getLocalizedConcept("time", for: destination))
+        } else if lowercaseTitle.contains("dining") || lowercaseTitle.contains("table") || lowercaseTitle.contains("manners") {
+            return ("Dining", getLocalizedConcept("dining", for: destination))
+        } else if lowercaseTitle.contains("communication") {
+            return ("Communication", getLocalizedConcept("communication", for: destination))
+        } else if lowercaseTitle.contains("gift") {
+            return ("Gift", getLocalizedConcept("gift", for: destination))
+        } else if lowercaseTitle.contains("hierarchy") {
+            return ("Hierarchy", getLocalizedConcept("hierarchy", for: destination))
+        } else {
+            return ("Culture", getLocalizedConcept("culture", for: destination))
+        }
+    }
+    
+    private func getLocalizedConcept(_ concept: String, for destination: String) -> String? {
+        switch destination.lowercased() {
+        case "japan":
+            switch concept {
+            case "protocol": return "礼儀"
+            case "respect": return "尊敬"
+            case "time": return "時間"
+            case "dining": return "食事"
+            case "communication": return "コミュニケーション"
+            case "gift": return "贈り物"
+            case "hierarchy": return "階層"
+            case "culture": return "文化"
+            default: return nil
+            }
+        case "germany":
+            switch concept {
+            case "protocol": return "Protokoll"
+            case "respect": return "Respekt"
+            case "time": return "Zeit"
+            case "dining": return "Speisen"
+            case "communication": return "Kommunikation"
+            case "gift": return "Geschenk"
+            case "hierarchy": return "Hierarchie"
+            case "culture": return "Kultur"
+            default: return nil
+            }
+        default:
+            return nil
+        }
+    }
+    
+    private func generateKeyKnowledgeFromContent(_ content: String) -> [String] {
+        // Split content into sentences and create key knowledge points
+        let sentences = content.components(separatedBy: ". ").filter { !$0.isEmpty }
+        
+        return sentences.enumerated().map { index, sentence in
+            let emoji = ["📚", "👀", "🙏", "⚡"][index % 4]
+            let cleanSentence = sentence.trimmingCharacters(in: .whitespacesAndNewlines)
+                .replacingOccurrences(of: ".", with: "")
+            return "\(emoji) \(cleanSentence)"
+        }
+    }
+    
+    private func determineCategoryFromType(_ type: CardType) -> CulturalCategory {
+        switch type {
+        case .businessEtiquette:
+            return .businessEtiquette
+        case .socialCustoms:
+            return .socialCustoms
+        case .communication:
+            return .communication
+        case .giftGiving:
+            return .giftGiving
+        case .diningCulture:
+            return .diningCulture
+        case .quickFacts:
+            return .timeManagement
+        }
     }
     
     // MARK: - Utility Methods

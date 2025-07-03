@@ -1205,6 +1205,8 @@ struct CulturalCardView: View {
     private var cardDisplayTitle: String {
         if card.isAIGenerated, let nameCardApp = card.nameCardApp, !nameCardApp.isEmpty {
             return nameCardApp
+        } else if card.isAIGenerated, let nameCard = card.nameCard, !nameCard.isEmpty {
+            return nameCard
         } else {
             return card.type.title
         }

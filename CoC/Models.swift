@@ -265,14 +265,32 @@ extension Destination {
         {
             var japan = Destination(name: "Japan", flag: "🇯🇵")
             japan.addCard(CulturalCard(
-                type: .businessEtiquette,
                 title: "Business Card Exchange",
-                content: "Present and receive business cards with both hands. Take time to read the card before putting it away. Never write on someone's business card in their presence."
+                category: .businessEtiquette,
+                nameCardApp: "Protocol",
+                nameCardLocal: "礼儀",
+                keyKnowledge: [
+                    "👥 Present and receive business cards with both hands",
+                    "👀 Take time to read the card before putting it away",
+                    "✍️ Never write on someone's business card in their presence",
+                    "🙏 Show respect for the person's identity and position"
+                ],
+                culturalInsights: "Business card exchange in Japan is a formal ritual that reflects respect and hierarchy awareness. The card represents the person's identity and status, so treating it with care demonstrates your understanding of Japanese business culture and attention to proper etiquette.",
+                destination: "Japan"
             ))
             japan.addCard(CulturalCard(
-                type: .socialCustoms,
                 title: "Bowing Etiquette",
-                content: "Bowing is still common in formal situations. A slight bow of the head is appropriate for foreigners. The deeper the bow, the more respect shown."
+                category: .greetingCustoms,
+                nameCardApp: "Respect",
+                nameCardLocal: "尊敬",
+                keyKnowledge: [
+                    "🙇 Bowing depth reflects hierarchy and respect levels",
+                    "👴 Wait for the senior person to initiate the greeting",
+                    "⏱️ Hold the bow for an appropriate duration",
+                    "🤝 Some situations may combine bowing with handshakes"
+                ],
+                culturalInsights: "Bowing remains an important part of Japanese business culture, especially in formal situations. The depth and duration of your bow should reflect the status of the person you're greeting. A slight bow of the head is appropriate for foreigners, but understanding the nuances shows cultural awareness and respect.",
+                destination: "Japan"
             ))
             return japan
         }(),
@@ -280,14 +298,32 @@ extension Destination {
         {
             var germany = Destination(name: "Germany", flag: "🇩🇪")
             germany.addCard(CulturalCard(
-                type: .businessEtiquette,
                 title: "Punctuality",
-                content: "Germans value punctuality highly. Arrive exactly on time or slightly early. Being late is considered disrespectful and unprofessional."
+                category: .timeManagement,
+                nameCardApp: "Time",
+                nameCardLocal: "Zeit",
+                keyKnowledge: [
+                    "⏰ Arrive exactly on time or slightly early",
+                    "📅 Respect scheduled meeting times strictly",
+                    "🚫 Being late is considered disrespectful and unprofessional",
+                    "⚡ Germans value efficiency and time management"
+                ],
+                culturalInsights: "German business culture places extremely high value on punctuality and time management. Arriving late to meetings or appointments is seen as disrespectful and unprofessional. This reflects the broader cultural values of efficiency, reliability, and respect for others' time.",
+                destination: "Germany"
             ))
             germany.addCard(CulturalCard(
-                type: .diningCulture,
                 title: "Table Manners",
-                content: "Keep your hands visible on the table. Wait for the host to say 'Guten Appetit' before eating. Don't cut potatoes with a knife - use your fork."
+                category: .diningCulture,
+                nameCardApp: "Dining",
+                nameCardLocal: "Speisen",
+                keyKnowledge: [
+                    "👐 Keep your hands visible on the table",
+                    "🍽️ Wait for the host to say 'Guten Appetit' before eating",
+                    "🥔 Don't cut potatoes with a knife - use your fork",
+                    "🍞 Break bread with your hands, don't cut it"
+                ],
+                culturalInsights: "German dining etiquette emphasizes proper table manners and respect for food traditions. Understanding these customs shows cultural awareness and helps build better business relationships during important meals and social gatherings.",
+                destination: "Germany"
             ))
             return germany
         }()
