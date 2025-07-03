@@ -217,9 +217,15 @@ struct ContentView: View {
                     }
                 } else {
                     // Destinations Overview
-                    DestinationsOverviewView(destinations: dataManager.destinations) { destination in
-                        selectedDestination = destination
-                    }
+                    DestinationsOverviewView(
+                        destinations: dataManager.destinations,
+                        onDestinationTap: { destination in
+                            selectedDestination = destination
+                        },
+                        onDestinationDelete: { destination in
+                            deleteDestination(destination)
+                        }
+                    )
                 }
                 
                 // Floating Buttons Overlay
@@ -305,32 +311,61 @@ struct ContentView: View {
         dataManager.removeCard(card, from: destination)
         print("🗑️ Deleted card: \(card.title)")
     }
+    
+    private func deleteDestination(_ destination: Destination) {
+        // Use DataManager to remove the destination and automatically save
+        if let index = dataManager.destinations.firstIndex(where: { $0.id == destination.id }) {
+            dataManager.removeDestination(at: index)
+            print("🗑️ Deleted destination: \(destination.name)")
+        }
+    }
 }
 
 // MARK: - Destinations Overview View
 struct DestinationsOverviewView: View {
     let destinations: [Destination]
     let onDestinationTap: (Destination) -> Void
+    let onDestinationDelete: (Destination) -> Void
     
     var body: some View {
-        ScrollView {
-            LazyVGrid(columns: [
-                GridItem(.adaptive(minimum: 180))
-            ], spacing: 20) {
-                                        ForEach(Array(destinations.enumerated()), id: \.element.id) { index, destination in
-                            DestinationCardView(destination: destination, onTap: {
-                                onDestinationTap(destination)
-                            })
-                            .transition(.asymmetric(
-                                insertion: .scale.combined(with: .opacity),
-                                removal: .scale.combined(with: .opacity)
-                            ))
-                            .animation(.spring(response: 1.2, dampingFraction: 0.9).delay(Double(index) * 0.1), value: destinations.count)
-                        }
+        VStack(spacing: 0) {
+            // Title Section
+            VStack(spacing: 8) {
+                Text("CoC: Cup of Culture")
+                    .font(.largeTitle)
+                    .fontWeight(.bold)
+                    .foregroundColor(.primary)
+                
+                Text("Cultural learning for international business")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
             }
             .padding(.horizontal, 20)
             .padding(.top, 80) // Top padding to avoid floating buttons
             .padding(.bottom, 20)
+            
+            // Destinations List
+            List {
+                ForEach(Array(destinations.enumerated()), id: \.element.id) { index, destination in
+                    DestinationCardView(destination: destination, onTap: {
+                        onDestinationTap(destination)
+                    })
+                    .listRowSeparator(.hidden)
+                    .listRowBackground(Color.clear)
+                    .transition(.asymmetric(
+                        insertion: .scale.combined(with: .opacity),
+                        removal: .scale.combined(with: .opacity)
+                    ))
+                    .animation(.spring(response: 1.2, dampingFraction: 0.9).delay(Double(index) * 0.1), value: destinations.count)
+                }
+                .onDelete { indexSet in
+                    for index in indexSet {
+                        onDestinationDelete(destinations[index])
+                    }
+                }
+            }
+            .listStyle(PlainListStyle())
+            .scrollContentBackground(.hidden)
         }
     }
 }
