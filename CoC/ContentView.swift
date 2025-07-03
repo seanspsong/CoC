@@ -242,6 +242,17 @@ struct ContentView: View {
                         
                         Spacer()
                         
+                        // Title in center - Only show in destinations overview
+                        if selectedDestination == nil {
+                            Text("CoC: Cup of Culture")
+                                .font(.title2)
+                                .fontWeight(.bold)
+                                .foregroundColor(.primary)
+                                .padding(.top, 16)
+                        }
+                        
+                        Spacer()
+                        
                         // Floating Settings Button (Top Right)
                         Button(action: {
                             showingSettings.toggle()
@@ -328,45 +339,29 @@ struct DestinationsOverviewView: View {
     let onDestinationDelete: (Destination) -> Void
     
     var body: some View {
-        VStack(spacing: 0) {
-            // Title Section
-            VStack(spacing: 8) {
-                Text("CoC: Cup of Culture")
-                    .font(.largeTitle)
-                    .fontWeight(.bold)
-                    .foregroundColor(.primary)
-                
-                Text("Cultural learning for international business")
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
+        // Destinations List
+        List {
+            ForEach(Array(destinations.enumerated()), id: \.element.id) { index, destination in
+                DestinationCardView(destination: destination, onTap: {
+                    onDestinationTap(destination)
+                })
+                .listRowSeparator(.hidden)
+                .listRowBackground(Color.clear)
+                .transition(.asymmetric(
+                    insertion: .scale.combined(with: .opacity),
+                    removal: .scale.combined(with: .opacity)
+                ))
+                .animation(.spring(response: 1.2, dampingFraction: 0.9).delay(Double(index) * 0.1), value: destinations.count)
             }
-            .padding(.horizontal, 20)
-            .padding(.top, 80) // Top padding to avoid floating buttons
-            .padding(.bottom, 20)
-            
-            // Destinations List
-            List {
-                ForEach(Array(destinations.enumerated()), id: \.element.id) { index, destination in
-                    DestinationCardView(destination: destination, onTap: {
-                        onDestinationTap(destination)
-                    })
-                    .listRowSeparator(.hidden)
-                    .listRowBackground(Color.clear)
-                    .transition(.asymmetric(
-                        insertion: .scale.combined(with: .opacity),
-                        removal: .scale.combined(with: .opacity)
-                    ))
-                    .animation(.spring(response: 1.2, dampingFraction: 0.9).delay(Double(index) * 0.1), value: destinations.count)
-                }
-                .onDelete { indexSet in
-                    for index in indexSet {
-                        onDestinationDelete(destinations[index])
-                    }
+            .onDelete { indexSet in
+                for index in indexSet {
+                    onDestinationDelete(destinations[index])
                 }
             }
-            .listStyle(PlainListStyle())
-            .scrollContentBackground(.hidden)
         }
+        .listStyle(PlainListStyle())
+        .scrollContentBackground(.hidden)
+        .padding(.top, 60) // Add top padding for the floating buttons
     }
 }
 
