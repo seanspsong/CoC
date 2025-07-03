@@ -337,12 +337,30 @@ A log to track the development process, vibes, achievements, and lessons learned
 
 ---
 
+### VL0018
+- **Time**: 18:40
+- **Date**: 2025-01-03
+- **Vibe Summary**: Title repositioning and UI cleanup for destinations overview. Moved app title to float between action buttons for better visual balance and cleaner interface design.
+- **Achievement**: 
+  - ✅ Repositioned "CoC: Cup of Culture" title between + button and settings button at top
+  - ✅ Removed green border styling for cleaner, minimalist appearance
+  - ✅ Added conditional display logic to show title only in destinations overview
+  - ✅ Cleaned up DestinationsOverviewView structure removing unnecessary VStack wrapper
+  - ✅ Adjusted List padding to accommodate floating title layout
+  - ✅ Implemented proper HStack with Spacer elements for perfect center alignment
+  - ✅ Maintained swipe-to-delete functionality while improving visual hierarchy
+  - ✅ Successfully built and tested the repositioned title layout
+  - ✅ Committed and pushed changes to GitHub repository
+- **Lesson Learnt**: Strategic title placement between functional elements creates better visual balance and follows iOS design patterns. Conditional display logic ensures UI elements appear only when contextually appropriate. Removing decorative borders can enhance readability and create cleaner, more professional interfaces. Proper spacing with Spacer elements in HStack provides reliable center alignment across different screen sizes.
+
+---
+
 ## Project Status
-🎯 **Current State**: Fully functional cultural learning app with working bilingual display system, enhanced TTS pronunciation focused on local language learning, immersive full-screen card viewing experience, comprehensive multilingual support, improved UX with close buttons, and country selection interface for destination creation
+🎯 **Current State**: Fully functional cultural learning app with working bilingual display system, enhanced TTS pronunciation focused on local language learning, immersive full-screen card viewing experience, comprehensive multilingual support, improved UX with close buttons, country selection interface for destination creation, swipe-to-delete functionality, and optimally positioned floating title
 📱 **Platform**: iOS (SwiftUI, iOS 17.0+)
-🏗️ **Architecture**: MVVM with AI-powered voice processing, comprehensive error handling, multilingual localization system, focused text-to-speech integration, and curated country selection workflow
-🌟 **Key Features**: Working bilingual name cards (nameCardApp/nameCardLocal), focused TTS pronunciation (local language only), comprehensive Name Card localization (Japanese, German, Chinese, Korean), expandable cultural cards (90% screen height), scrollable content with proper clipping, live transcription display, voice-to-card generation, purple color theme (#8A2BE2), professional card design, close buttons on all modal interfaces, specific company founder recognition, country selection modal with 16 popular destinations
-✨ **Recent Enhancement**: Added professional country selection interface with 16 curated countries (Japan, Germany, UK, France, Italy, Spain, China, South Korea, India, Brazil, Mexico, Netherlands, Sweden, Switzerland, Australia, Canada) for enhanced destination creation UX
+🏗️ **Architecture**: MVVM with AI-powered voice processing, comprehensive error handling, multilingual localization system, focused text-to-speech integration, curated country selection workflow, and professional floating UI elements
+🌟 **Key Features**: Working bilingual name cards (nameCardApp/nameCardLocal), focused TTS pronunciation (local language only), comprehensive Name Card localization (Japanese, German, Chinese, Korean), expandable cultural cards (90% screen height), scrollable content with proper clipping, live transcription display, voice-to-card generation, purple color theme (#8A2BE2), professional card design, close buttons on all modal interfaces, specific company founder recognition, country selection modal with 16 popular destinations, swipe-to-delete for destinations, floating title between action buttons
+✨ **Recent Enhancement**: Optimized title positioning by floating "CoC: Cup of Culture" between + button and settings button for better visual balance and cleaner interface design
 
 ## Next Steps
 - [x] Implement consistent purple color theme across the app
