@@ -130,6 +130,7 @@ struct ContentView: View {
     @State private var selectedCard: CulturalCard?
     @State private var showingVoiceRecording = false
     @State private var showingCountrySelection = false
+    @State private var showingAPIKeyAlert = false
     @StateObject private var voiceRecorder = VoiceRecorder()
     @StateObject private var aiGenerator = AICardGenerator()
     
@@ -186,15 +187,22 @@ struct ContentView: View {
                     VoiceRecordingCardView(
                         destination: selectedDestination,
                         voiceRecorder: voiceRecorder,
-                        aiGenerator: aiGenerator
-                    ) { generatedCard in
-                        // Handle successful card generation
-                        addGeneratedCard(generatedCard, to: selectedDestination)
-                        showingVoiceRecording = false
-                    } onCancel: {
-                        // Handle cancellation
-                        showingVoiceRecording = false
-                    }
+                        aiGenerator: aiGenerator,
+                        onCardGenerated: { generatedCard in
+                            // Handle successful card generation
+                            addGeneratedCard(generatedCard, to: selectedDestination)
+                            showingVoiceRecording = false
+                        },
+                        onCancel: {
+                            // Handle cancellation
+                            showingVoiceRecording = false
+                        },
+                        onAPIKeyError: {
+                            // Handle API key error
+                            showingAPIKeyAlert = true
+                            showingVoiceRecording = false
+                        }
+                    )
                     .zIndex(1)
                 } else if let selectedDestination = selectedDestination,
                           let currentDestination = dataManager.destinations.first(where: { $0.id == selectedDestination.id }) {
@@ -281,6 +289,14 @@ struct ContentView: View {
             } onCancel: {
                 showingCountrySelection = false
             }
+        }
+        .alert("API Key Required", isPresented: $showingAPIKeyAlert) {
+            Button("Settings") {
+                showingSettings = true
+            }
+            Button("Cancel", role: .cancel) { }
+        } message: {
+            Text("Please add your OpenAI API key in Settings to use AI-powered cultural insights.")
         }
     }
     
@@ -644,6 +660,7 @@ struct VoiceRecordingCardView: View {
     @ObservedObject var aiGenerator: AICardGenerator
     let onCardGenerated: (CulturalCard) -> Void
     let onCancel: () -> Void
+    let onAPIKeyError: () -> Void
     
     @State private var showingGeneratedCard = false
     @State private var generatedCard: CulturalCard?
@@ -777,6 +794,12 @@ struct VoiceRecordingCardView: View {
             } catch {
                 await MainActor.run {
                     recordingState = .error
+                    // Check if it's an API key error and show alert
+                    if let aiError = error as? AIGenerationError,
+                       case .apiKeyNotConfigured = aiError {
+                        print("❌ [VoiceRecording] API key not configured error")
+                        onAPIKeyError()
+                    }
                 }
             }
         }
@@ -1864,50 +1887,152 @@ struct InsightRow: View {
 
 // MARK: - Modal Views
 struct SettingsView: View {
+    @AppStorage("openai_api_key") private var apiKey: String = ""
+    @State private var showingAPIKeyInput = false
+    @State private var tempAPIKey = ""
     @Environment(\.dismiss) private var dismiss
     
     var body: some View {
         NavigationView {
             List {
-                Section("Preferences") {
+                Section("AI Configuration") {
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack {
+                            Text("OpenAI API Key")
+                                .font(.subheadline)
+                                .fontWeight(.medium)
+                            
+                            Spacer()
+                            
+                            Button(apiKey.isEmpty ? "Add Key" : "Update") {
+                                tempAPIKey = apiKey
+                                showingAPIKeyInput = true
+                            }
+                            .font(.caption)
+                            .foregroundColor(.cocPurple)
+                        }
+                        
+                        Text(apiKey.isEmpty ? "Required for AI-powered cultural insights" : "API key configured ✓")
+                            .font(.caption)
+                            .foregroundColor(apiKey.isEmpty ? .red : .green)
+                    }
+                    .padding(.vertical, 4)
+                }
+                
+                Section("App Information") {
                     HStack {
-                        Text("🔔")
-                        Text("Notifications")
+                        Text("Version")
+                        Spacer()
+                        Text("1.0.0")
+                            .foregroundColor(.secondary)
                     }
                     
                     HStack {
-                        Text("💾")
-                        Text("Offline Data")
-                    }
-                    
-                    HStack {
-                        Text("📤")
-                        Text("Export/Backup")
+                        Text("AI Model")
+                        Spacer()
+                        Text("ChatGPT 4.1")
+                            .foregroundColor(.secondary)
                     }
                 }
                 
                 Section("About") {
-                    HStack {
-                        Text("ℹ️")
-                        Text("Version 1.0")
-                    }
-                    
-                    HStack {
-                        Text("⚖️")
-                        Text("MIT License")
-                    }
+                    Text("Cup of Culture helps international business travelers understand destination cultures through AI-powered insights.")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
                 }
             }
-            .navigationTitle("⚙️ Settings")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Done") {
-                        dismiss()
-                    }
-                }
-            }
+            .navigationTitle("Settings")
+            .navigationBarItems(trailing: Button("Done") {
+                dismiss()
+            })
         }
+        .sheet(isPresented: $showingAPIKeyInput) {
+            APIKeyInputView(
+                apiKey: $tempAPIKey,
+                onSave: { newKey in
+                    apiKey = newKey
+                    showingAPIKeyInput = false
+                },
+                onCancel: {
+                    showingAPIKeyInput = false
+                }
+            )
+        }
+    }
+}
+
+// MARK: - API Key Input View
+struct APIKeyInputView: View {
+    @Binding var apiKey: String
+    let onSave: (String) -> Void
+    let onCancel: () -> Void
+    @State private var showingKey = false
+    @Environment(\.dismiss) private var dismiss
+    
+    var body: some View {
+        NavigationView {
+            VStack(spacing: 20) {
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("OpenAI API Key")
+                        .font(.title2)
+                        .fontWeight(.bold)
+                    
+                    Text("Your API key is stored securely on your device and never shared.")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                    
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack {
+                            if showingKey {
+                                TextField("sk-proj-...", text: $apiKey)
+                                    .textFieldStyle(RoundedBorderTextFieldStyle())
+                                    .autocapitalization(.none)
+                                    .autocorrectionDisabled()
+                            } else {
+                                SecureField("sk-proj-...", text: $apiKey)
+                                    .textFieldStyle(RoundedBorderTextFieldStyle())
+                                    .autocapitalization(.none)
+                                    .autocorrectionDisabled()
+                            }
+                            
+                            Button(action: { showingKey.toggle() }) {
+                                Image(systemName: showingKey ? "eye.slash" : "eye")
+                                    .foregroundColor(.cocPurple)
+                            }
+                        }
+                        
+                        Text("Example: sk-proj-abcd1234efgh5678...")
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                        
+                        Link("Get your API key from OpenAI", 
+                             destination: URL(string: "https://platform.openai.com/api-keys")!)
+                            .font(.caption)
+                            .foregroundColor(.cocPurple)
+                    }
+                }
+                .padding()
+                
+                Spacer()
+            }
+            .navigationTitle("API Key")
+            .navigationBarItems(
+                leading: Button("Cancel") { 
+                    onCancel()
+                },
+                trailing: Button("Save") {
+                    onSave(apiKey)
+                }
+                .disabled(apiKey.isEmpty || !apiKey.hasPrefix("sk-"))
+                .foregroundColor(apiKey.isEmpty || !apiKey.hasPrefix("sk-") ? .gray : .cocPurple)
+            )
+        }
+    }
+    
+    init(apiKey: Binding<String>, onSave: @escaping (String) -> Void, onCancel: @escaping () -> Void) {
+        self._apiKey = apiKey
+        self.onSave = onSave
+        self.onCancel = onCancel
     }
 }
 

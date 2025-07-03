@@ -86,6 +86,36 @@ struct ChatGPTResponse: Codable {
     }
 }
 
+// MARK: - AI Generation Errors
+enum AIGenerationError: LocalizedError {
+    case apiKeyNotConfigured
+    case invalidURL
+    case invalidResponse
+    case emptyResponse
+    case httpError(Int)
+    case networkError(String)
+    case processingFailed
+    
+    var errorDescription: String? {
+        switch self {
+        case .apiKeyNotConfigured:
+            return "OpenAI API key not configured. Please add your API key in Settings."
+        case .invalidURL:
+            return "Invalid ChatGPT API URL"
+        case .invalidResponse:
+            return "Invalid response from ChatGPT API"
+        case .emptyResponse:
+            return "Empty response from ChatGPT API"
+        case .httpError(let statusCode):
+            return "HTTP Error \(statusCode) from ChatGPT API"
+        case .networkError(let message):
+            return "Network error: \(message)"
+        case .processingFailed:
+            return "Failed to process ChatGPT response"
+        }
+    }
+}
+
 // MARK: - AI Response Structure
 struct CulturalInsightResponse: Codable {
     let title: String
@@ -103,14 +133,15 @@ class AICardGenerator: ObservableObject {
     
     // MARK: - ChatGPT Configuration
     private let chatGPTEndpoint = "https://api.openai.com/v1/chat/completions"
-    private let apiKey: String
     private let model = "gpt-4o-2024-11-20" // Latest ChatGPT 4.1 model
     
+    private var apiKey: String {
+        return UserDefaults.standard.string(forKey: "openai_api_key") ?? ""
+    }
+    
     init() {
-        // In a real app, you'd get this from a secure configuration
-        // For now, we'll use a placeholder - you'll need to add your actual API key
-        self.apiKey = ProcessInfo.processInfo.environment["OPENAI_API_KEY"] ?? "your-api-key-here"
         print("🧠 [AICardGenerator] Initialized with ChatGPT 4.1 integration")
+        print("🔑 [AICardGenerator] API key configured: \(apiKey.isEmpty ? "❌ No" : "✅ Yes")")
     }
     
     // MARK: - Card Generation
@@ -220,7 +251,7 @@ class AICardGenerator: ObservableObject {
     ) async throws -> CulturalInsightResponse {
         print("🧠 [AICardGenerator] Calling ChatGPT API...")
         
-        guard !apiKey.isEmpty && apiKey != "your-api-key-here" else {
+        guard !apiKey.isEmpty else {
             print("❌ [AICardGenerator] OpenAI API key not configured")
             throw AIGenerationError.apiKeyNotConfigured
         }
@@ -317,7 +348,7 @@ class AICardGenerator: ObservableObject {
             
         } catch {
             print("❌ [AICardGenerator] ChatGPT API error: \(error)")
-            throw AIGenerationError.networkError(error)
+            throw AIGenerationError.networkError(error.localizedDescription)
         }
     }
     
@@ -401,35 +432,7 @@ class AICardGenerator: ObservableObject {
     }
 }
 
-// MARK: - AI Generation Errors
-enum AIGenerationError: LocalizedError {
-    case apiKeyNotConfigured
-    case invalidURL
-    case invalidResponse
-    case emptyResponse
-    case httpError(Int)
-    case networkError(Error)
-    case processingFailed
-    
-    var errorDescription: String? {
-        switch self {
-        case .apiKeyNotConfigured:
-            return "OpenAI API key not configured. Please add your API key to environment variables."
-        case .invalidURL:
-            return "Invalid ChatGPT API URL"
-        case .invalidResponse:
-            return "Invalid response from ChatGPT API"
-        case .emptyResponse:
-            return "Empty response from ChatGPT API"
-        case .httpError(let statusCode):
-            return "HTTP Error \(statusCode) from ChatGPT API"
-        case .networkError(let error):
-            return "Network error: \(error.localizedDescription)"
-        case .processingFailed:
-            return "Failed to process ChatGPT response"
-        }
-    }
-}
+
 
 // MARK: - Local Language Mapping
 extension AICardGenerator {

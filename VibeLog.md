@@ -388,8 +388,23 @@ A log to track the development process, vibes, achievements, and lessons learned
 🎯 **Current State**: Fully functional cultural learning app with ChatGPT 4.1-powered AI generation, country-specific cultural intelligence, working bilingual display system, enhanced TTS pronunciation focused on local language learning, immersive full-screen card viewing experience, comprehensive multilingual support, improved UX with close buttons, country selection interface for destination creation, swipe-to-delete functionality, and optimally positioned floating title
 📱 **Platform**: iOS (SwiftUI, iOS 17.0+)  
 🏗️ **Architecture**: MVVM with ChatGPT 4.1 AI integration, country-specific context system, comprehensive error handling, multilingual localization system, focused text-to-speech integration, curated country selection workflow, and professional floating UI elements
-🌟 **Key Features**: ChatGPT 4.1-powered cultural generation with country context, working bilingual name cards (nameCardApp/nameCardLocal), focused TTS pronunciation (local language only), comprehensive Name Card localization (Japanese, German, Chinese, Korean), expandable cultural cards (90% screen height), scrollable content with proper clipping, live transcription display, voice-to-card generation, purple color theme (#8A2BE2), professional card design, close buttons on all modal interfaces, specific company founder recognition, country selection modal with 16 popular destinations, swipe-to-delete for destinations, floating title between action buttons
-✨ **Recent Enhancement**: Major AI architecture refactoring - migrated from Apple FoundationModels to ChatGPT 4.1 API with country-specific context system for enhanced cultural accuracy and reliability
+🌟 **Key Features**: ChatGPT 4.1-powered cultural generation with country context, working bilingual name cards (nameCardApp/nameCardLocal), focused TTS pronunciation (local language only), comprehensive Name Card localization (Japanese, German, Chinese, Korean), expandable cultural cards (90% screen height), scrollable content with proper clipping, live transcription display, voice-to-card generation, purple color theme (#8A2BE2), professional card design, close buttons on all modal interfaces, specific company founder recognition, country selection modal with 16 popular destinations, swipe-to-delete for destinations, floating title between action buttons, functional settings modal with proper dismiss functionality
+✨ **Recent Enhancement**: Fixed settings modal UX by implementing proper Done button dismiss functionality for better user experience
+
+---
+
+### VL0020
+- **Time**: 19:05
+- **Date**: 2025-01-02
+- **Vibe Summary**: Settings modal UX improvement. Fixed non-functional Done button in settings view by implementing proper dismiss functionality for better user experience.
+- **Achievement**: 
+  - ✅ Added `@Environment(\.dismiss)` to SettingsView for proper modal dismissal
+  - ✅ Fixed Done button in settings to actually close the modal using `dismiss()`
+  - ✅ Improved user experience with functional exit button from settings view
+  - ✅ Successfully built and tested the dismiss functionality
+- **Lesson Learnt**: Modal dismissal in SwiftUI requires proper environment dismiss handling. The `@Environment(\.dismiss)` property wrapper provides the standard iOS pattern for modal dismissal. Functional UI elements like Done buttons are essential for proper user navigation flow.
+
+---
 
 ## Next Steps
 - [x] Implement consistent purple color theme across the app
