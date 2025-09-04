@@ -9,81 +9,85 @@ import Foundation
 import Combine
 import UIKit
 
-// MARK: - ChatGPT API Integration
-struct ChatGPTRequest: Codable {
+// MARK: - GPT-5 Responses API Integration
+struct GPT5Request: Codable {
     let model: String
-    let messages: [ChatGPTMessage]
-    let temperature: Double
-    let maxTokens: Int
-    let responseFormat: ResponseFormat?
+    let input: String
+    let reasoning: ReasoningConfig?
+    let text: TextConfig?
     
-    enum CodingKeys: String, CodingKey {
-        case model, messages, temperature
-        case maxTokens = "max_tokens"
-        case responseFormat = "response_format"
+    struct ReasoningConfig: Codable {
+        let effort: String // "minimal", "low", "medium", "high"
     }
     
-    struct ResponseFormat: Codable {
-        let type: String
-        let jsonSchema: JSONSchema?
+    struct TextConfig: Codable {
+        let verbosity: String // "low", "medium", "high"
+    }
+}
+    
+
+
+struct GPT5Response: Codable {
+    let id: String?
+    let object: String?
+    let createdAt: Int?
+    let model: String?
+    let output: [OutputItem]?
+    let outputText: String?
+    
+    enum CodingKeys: String, CodingKey {
+        case id, object, model, output
+        case createdAt = "created_at"
+        case outputText = "output_text"
+    }
+    
+    struct OutputItem: Codable {
+        let id: String?
+        let type: String?
+        let status: String?
+        let content: [ContentItem]?
+        let role: String?
+        let text: String?
         
         enum CodingKeys: String, CodingKey {
-            case type
-            case jsonSchema = "json_schema"
+            case id, type, status, content, role, text
         }
     }
     
-    struct JSONSchema: Codable {
-        let name: String
-        let schema: Schema
+    struct ContentItem: Codable {
+        let type: String?
+        let text: String?
+        let annotations: [String]?
+        let logprobs: [String]?
+    }
+    
+    // Computed property to get the actual output text
+    var text: String {
+        // First try the direct output_text field
+        if let outputText = outputText {
+            return outputText
+        }
         
-        struct Schema: Codable {
-            let type: String
-            let properties: [String: Property]
-            let required: [String]
-            
-            struct Property: Codable {
-                let type: String
-                let description: String
-                let items: ItemType?
+        // Then try to find text in output items
+        if let output = output {
+            for item in output {
+                // Try direct text field
+                if let text = item.text {
+                    return text
+                }
                 
-                struct ItemType: Codable {
-                    let type: String
+                // Try content array
+                if let content = item.content {
+                    for contentItem in content {
+                        if contentItem.type == "output_text", let text = contentItem.text {
+                            return text
+                        }
+                    }
                 }
             }
         }
-    }
-}
-
-struct ChatGPTMessage: Codable {
-    let role: String
-    let content: String
-}
-
-struct ChatGPTResponse: Codable {
-    let choices: [Choice]
-    let usage: Usage?
-    
-    struct Choice: Codable {
-        let message: ChatGPTMessage
-        let finishReason: String?
         
-        enum CodingKeys: String, CodingKey {
-            case message
-            case finishReason = "finish_reason"
-        }
-    }
-    
-    struct Usage: Codable {
-        let promptTokens: Int
-        let completionTokens: Int
-        let totalTokens: Int
-        
-        enum CodingKeys: String, CodingKey {
-            case promptTokens = "prompt_tokens"
-            case completionTokens = "completion_tokens"
-            case totalTokens = "total_tokens"
-        }
+        return ""
     }
 }
 
@@ -102,13 +106,13 @@ enum AIGenerationError: LocalizedError {
         case .apiKeyNotConfigured:
             return "OpenAI API key not configured. Please add your API key in Settings."
         case .invalidURL:
-            return "Invalid ChatGPT API URL"
+            return "Invalid GPT-5 API URL"
         case .invalidResponse:
-            return "Invalid response from ChatGPT API"
+            return "Invalid response from GPT-5 API"
         case .emptyResponse:
-            return "Empty response from ChatGPT API"
+            return "Empty response from GPT-5 API"
         case .httpError(let statusCode):
-            return "HTTP Error \(statusCode) from ChatGPT API"
+            return "HTTP Error \(statusCode) from GPT-5 API"
         case .networkError(let message):
             return "Network error: \(message)"
         case .processingFailed:
@@ -132,16 +136,16 @@ class AICardGenerator: ObservableObject {
     @Published var generationProgress: String = ""
     @Published var errorMessage: String?
     
-    // MARK: - ChatGPT Configuration
-    private let chatGPTEndpoint = "https://api.openai.com/v1/chat/completions"
-    private let model = "gpt-4o-2024-11-20" // Latest ChatGPT 4.1 model
+    // MARK: - GPT-5 Configuration
+    private let gpt5Endpoint = "https://api.openai.com/v1/responses"
+    private let model = "gpt-5" // Latest ChatGPT 5 model
     
     private var apiKey: String {
         return UserDefaults.standard.string(forKey: "openai_api_key") ?? ""
     }
     
     init() {
-        print("🧠 [AICardGenerator] Initialized with ChatGPT 4.1 integration")
+        print("🧠 [AICardGenerator] Initialized with ChatGPT 5 integration")
         print("🔑 [AICardGenerator] API key configured: \(apiKey.isEmpty ? "❌ No" : "✅ Yes")")
     }
     
@@ -150,7 +154,7 @@ class AICardGenerator: ObservableObject {
         destination: Destination,
         userQuery: String
     ) async throws -> CulturalCard {
-        print("🤖 [AICardGenerator] ===== STARTING CHATGPT GENERATION =====")
+        print("🤖 [AICardGenerator] ===== STARTING GPT-5 GENERATION =====")
         print("🎯 [AICardGenerator] Destination: '\(destination.name)' (Country: \(destination.country))")
         print("🎤 [AICardGenerator] Voice Transcript: '\(userQuery)'")
         print("📏 [AICardGenerator] Transcript Length: \(userQuery.count) characters")
@@ -172,16 +176,16 @@ class AICardGenerator: ObservableObject {
             let userPrompt = buildUserPrompt(destination: destination, query: userQuery)
             
             generationProgress = "Generating cultural insight..."
-            print("⚡ [AICardGenerator] Sending request to ChatGPT API...")
+            print("⚡ [AICardGenerator] Sending request to GPT-5 API...")
             
-            // Generate content using ChatGPT
-            let response = try await generateWithChatGPT(
+            // Generate content using GPT-5
+            let response = try await generateWithGPT5(
                 systemPrompt: systemPrompt,
                 userPrompt: userPrompt
             )
             
             generationProgress = "Processing response..."
-            print("🔍 [AICardGenerator] Converting ChatGPT response to CulturalCard...")
+            print("🔍 [AICardGenerator] Converting GPT-5 response to CulturalCard...")
             
             // Convert response to cultural card
             let card = convertToCulturalCard(
@@ -191,7 +195,7 @@ class AICardGenerator: ObservableObject {
             )
             
             generationProgress = "Complete!"
-            print("✅ [AICardGenerator] Cultural card generated successfully!")
+            print("✅ [AICardGenerator] Cultural card generated successfully with GPT-5!")
             print("📋 [AICardGenerator] Card Title: '\(card.title)'")
             print("🏷️ [AICardGenerator] Card Category: \(card.category?.title ?? "None")")
             
@@ -217,13 +221,13 @@ class AICardGenerator: ObservableObject {
         - Consider \(country)'s unique business culture, hierarchy, and communication styles
         - Reference \(country)'s historical and cultural background when relevant
 
-        RESPONSE FORMAT: You must respond with a valid JSON object containing exactly these fields:
+        RESPONSE FORMAT: Respond with a JSON object like this:
         {
-            "title": "Descriptive title for the cultural insight",
-            "category": "One of: Business Etiquette, Social Customs, Communication Styles, Gift Giving, Dining Etiquette, Time Management, Hierarchy, Greeting Customs",
-            "nameCard": "Key concept or person name in English\\nLocal language translation (e.g., 'Respect\\n尊敬')",
-            "keyKnowledge": ["🔸 Four practical", "🔸 knowledge points", "🔸 with relevant emojis", "🔸 specific to \(country)"],
-            "culturalInsights": "Comprehensive paragraph explaining the cultural practice, its significance in \(country), and practical business applications"
+            "title": "Cultural insight title",
+            "category": "Business Etiquette",
+            "nameCard": "Respect\\n尊敬",
+            "keyKnowledge": ["🔸 Point 1", "🔸 Point 2", "🔸 Point 3", "🔸 Point 4"],
+            "culturalInsights": "Detailed explanation"
         }
 
         CULTURAL ACCURACY: 
@@ -245,53 +249,34 @@ class AICardGenerator: ObservableObject {
         """
     }
     
-    // MARK: - ChatGPT API Integration
-    private func generateWithChatGPT(
+    // MARK: - GPT-5 Responses API Integration
+    private func generateWithGPT5(
         systemPrompt: String,
         userPrompt: String
     ) async throws -> CulturalInsightResponse {
-        print("🧠 [AICardGenerator] Calling ChatGPT API...")
+        print("🧠 [AICardGenerator] Calling GPT-5 Responses API...")
         
         guard !apiKey.isEmpty else {
             print("❌ [AICardGenerator] OpenAI API key not configured")
             throw AIGenerationError.apiKeyNotConfigured
         }
         
-        // Create the request
-        let messages = [
-            ChatGPTMessage(role: "system", content: systemPrompt),
-            ChatGPTMessage(role: "user", content: userPrompt)
-        ]
+        // Combine system and user prompts
+        let combinedPrompt = """
+        \(systemPrompt)
         
-        // Define JSON schema for structured response
-        let jsonSchema = ChatGPTRequest.JSONSchema(
-            name: "cultural_insight",
-            schema: ChatGPTRequest.JSONSchema.Schema(
-                type: "object",
-                properties: [
-                    "title": ChatGPTRequest.JSONSchema.Schema.Property(type: "string", description: "Descriptive title for the cultural insight", items: nil),
-                    "category": ChatGPTRequest.JSONSchema.Schema.Property(type: "string", description: "Cultural category", items: nil),
-                    "nameCard": ChatGPTRequest.JSONSchema.Schema.Property(type: "string", description: "Key concept with local translation", items: nil),
-                    "keyKnowledge": ChatGPTRequest.JSONSchema.Schema.Property(type: "array", description: "Four practical knowledge points", items: ChatGPTRequest.JSONSchema.Schema.Property.ItemType(type: "string")),
-                    "culturalInsights": ChatGPTRequest.JSONSchema.Schema.Property(type: "string", description: "Comprehensive cultural explanation", items: nil)
-                ],
-                required: ["title", "category", "nameCard", "keyKnowledge", "culturalInsights"]
-            )
-        )
+        \(userPrompt)
+        """
         
-        let request = ChatGPTRequest(
+        let request = GPT5Request(
             model: model,
-            messages: messages,
-            temperature: 0.7,
-            maxTokens: 1000,
-            responseFormat: ChatGPTRequest.ResponseFormat(
-                type: "json_schema",
-                jsonSchema: jsonSchema
-            )
+            input: combinedPrompt,
+            reasoning: GPT5Request.ReasoningConfig(effort: "medium"),
+            text: GPT5Request.TextConfig(verbosity: "medium")
         )
         
         // Send request
-        guard let url = URL(string: chatGPTEndpoint) else {
+        guard let url = URL(string: gpt5Endpoint) else {
             throw AIGenerationError.invalidURL
         }
         
@@ -304,14 +289,14 @@ class AICardGenerator: ObservableObject {
             let requestData = try JSONEncoder().encode(request)
             urlRequest.httpBody = requestData
             
-            print("📤 [AICardGenerator] Sending request to ChatGPT...")
+            print("📤 [AICardGenerator] Sending request to GPT-5 Responses API...")
             let (data, response) = try await URLSession.shared.data(for: urlRequest)
             
             guard let httpResponse = response as? HTTPURLResponse else {
                 throw AIGenerationError.invalidResponse
             }
             
-            print("📥 [AICardGenerator] Received response: \(httpResponse.statusCode)")
+            print("📥 [AICardGenerator] Received GPT-5 response: \(httpResponse.statusCode)")
             
             guard httpResponse.statusCode == 200 else {
                 print("❌ [AICardGenerator] HTTP Error: \(httpResponse.statusCode)")
@@ -321,20 +306,23 @@ class AICardGenerator: ObservableObject {
                 throw AIGenerationError.httpError(httpResponse.statusCode)
             }
             
-            // Parse response
-            let chatGPTResponse = try JSONDecoder().decode(ChatGPTResponse.self, from: data)
-            
-            guard let choice = chatGPTResponse.choices.first else {
-                throw AIGenerationError.emptyResponse
+            // Debug: Print raw response data
+            print("🔍 [AICardGenerator] Raw API response data length: \(data.count)")
+            if let rawResponseString = String(data: data, encoding: .utf8) {
+                print("🔍 [AICardGenerator] Raw API response: \(rawResponseString)")
             }
             
-            print("📤 [AICardGenerator] CHATGPT RESPONSE:")
+            // Parse response
+            let gpt5Response = try JSONDecoder().decode(GPT5Response.self, from: data)
+            
+            print("📤 [AICardGenerator] GPT-5 RESPONSE:")
             print("--- RESPONSE START ---")
-            print(choice.message.content)
+            print("Output text length: \(gpt5Response.text.count)")
+            print("Output text: '\(gpt5Response.text)'")
             print("--- RESPONSE END ---")
             
             // Parse the JSON content
-            let responseData = choice.message.content.data(using: .utf8) ?? Data()
+            let responseData = gpt5Response.text.data(using: .utf8) ?? Data()
             let culturalResponse = try JSONDecoder().decode(CulturalInsightResponse.self, from: responseData)
             
             print("✅ [AICardGenerator] Successfully parsed structured response")
@@ -348,7 +336,7 @@ class AICardGenerator: ObservableObject {
             return culturalResponse
             
         } catch {
-            print("❌ [AICardGenerator] ChatGPT API error: \(error)")
+            print("❌ [AICardGenerator] GPT-5 API error: \(error)")
             throw AIGenerationError.networkError(error.localizedDescription)
         }
     }
@@ -752,7 +740,7 @@ extension AICardGenerator {
             let systemPrompt = buildImageSystemPrompt(country: destination.country)
             let userPrompt = "Analyze this image and provide cultural insights relevant to \(destination.country). What cultural elements, practices, or learning opportunities do you see?"
             
-            // Generate content using ChatGPT Vision
+            // Generate content using GPT-5 Vision
             let response = try await generateWithChatGPTVision(
                 systemPrompt: systemPrompt,
                 userPrompt: userPrompt,
@@ -798,13 +786,13 @@ extension AICardGenerator {
         - Identify business or social customs that might be relevant
         - Note any traditional or modern cultural elements
 
-        RESPONSE FORMAT: You must respond with a valid JSON object containing exactly these fields:
+        RESPONSE FORMAT: Respond with a JSON object like this:
         {
-            "title": "Descriptive title for the cultural insight observed in the image",
-            "category": "One of: Business Etiquette, Social Customs, Communication Styles, Gift Giving, Dining Etiquette, Time Management, Hierarchy, Greeting Customs",
-            "nameCard": "Key concept or cultural element in English\\nLocal language translation",
-            "keyKnowledge": ["🔸 Four practical", "🔸 knowledge points", "🔸 based on image analysis", "🔸 specific to \(country)"],
-            "culturalInsights": "Comprehensive explanation of what the image reveals about \(country)'s culture, its significance, and practical applications for international visitors"
+            "title": "Cultural insight from image",
+            "category": "Business Etiquette",
+            "nameCard": "Respect\\n尊敬",
+            "keyKnowledge": ["🔸 Point 1", "🔸 Point 2", "🔸 Point 3", "🔸 Point 4"],
+            "culturalInsights": "Detailed explanation"
         }
 
         ACCURACY: 
@@ -821,63 +809,32 @@ extension AICardGenerator {
         userPrompt: String,
         base64Image: String
     ) async throws -> CulturalInsightResponse {
-        print("🧠 [AICardGenerator] Calling ChatGPT Vision API...")
+        print("🧠 [AICardGenerator] Calling GPT-5 Vision API...")
         
         guard !apiKey.isEmpty else {
             print("❌ [AICardGenerator] OpenAI API key not configured")
             throw AIGenerationError.apiKeyNotConfigured
         }
         
-        // Create the request with image
-        let messages: [ChatGPTVisionMessage] = [
-            ChatGPTVisionMessage(
-                role: "system",
-                content: [
-                    ChatGPTVisionContent(type: "text", text: systemPrompt, imageUrl: nil)
-                ]
-            ),
-            ChatGPTVisionMessage(
-                role: "user",
-                content: [
-                    ChatGPTVisionContent(type: "text", text: userPrompt, imageUrl: nil),
-                    ChatGPTVisionContent(
-                        type: "image_url",
-                        text: nil,
-                        imageUrl: ChatGPTImageUrl(url: "data:image/jpeg;base64,\(base64Image)")
-                    )
-                ]
-            )
-        ]
+        // Combine system and user prompts with image reference
+        let combinedPrompt = """
+        \(systemPrompt)
         
-        // Define JSON schema for structured response
-        let jsonSchema = ChatGPTRequest.JSONSchema(
-            name: "cultural_insight",
-            schema: ChatGPTRequest.JSONSchema.Schema(
-                type: "object",
-                properties: [
-                    "title": ChatGPTRequest.JSONSchema.Schema.Property(type: "string", description: "Descriptive title for the cultural insight", items: nil),
-                    "category": ChatGPTRequest.JSONSchema.Schema.Property(type: "string", description: "Cultural category", items: nil),
-                    "nameCard": ChatGPTRequest.JSONSchema.Schema.Property(type: "string", description: "Key concept with local translation", items: nil),
-                    "keyKnowledge": ChatGPTRequest.JSONSchema.Schema.Property(type: "array", description: "Four practical knowledge points", items: ChatGPTRequest.JSONSchema.Schema.Property.ItemType(type: "string")),
-                    "culturalInsights": ChatGPTRequest.JSONSchema.Schema.Property(type: "string", description: "Comprehensive cultural explanation", items: nil)
-                ],
-                required: ["title", "category", "nameCard", "keyKnowledge", "culturalInsights"]
-            )
-        )
+        \(userPrompt)
         
-        let request = ChatGPTVisionRequest(
-            model: "gpt-4o-2024-11-20", // GPT-4o with vision capabilities
-            messages: messages,
-            temperature: 0.7,
-            maxTokens: 1000,
-            responseFormat: ChatGPTRequest.ResponseFormat(
-                type: "json_schema",
-                jsonSchema: jsonSchema
-            )
+        [Image data: \(base64Image)]
+        """
+        
+        // Create GPT-5 vision request
+        let request = GPT5Request(
+            model: "gpt-5", // GPT-5 with vision capabilities
+            input: combinedPrompt,
+            reasoning: GPT5Request.ReasoningConfig(effort: "medium"),
+            text: GPT5Request.TextConfig(verbosity: "medium")
         )
         
         // Send request
-        guard let url = URL(string: chatGPTEndpoint) else {
+        guard let url = URL(string: gpt5Endpoint) else {
             throw AIGenerationError.invalidURL
         }
         
@@ -890,14 +847,14 @@ extension AICardGenerator {
             let requestData = try JSONEncoder().encode(request)
             urlRequest.httpBody = requestData
             
-            print("📤 [AICardGenerator] Sending vision request to ChatGPT...")
+            print("📤 [AICardGenerator] Sending vision request to GPT-5...")
             let (data, response) = try await URLSession.shared.data(for: urlRequest)
             
             guard let httpResponse = response as? HTTPURLResponse else {
                 throw AIGenerationError.invalidResponse
             }
             
-            print("📥 [AICardGenerator] Received vision response: \(httpResponse.statusCode)")
+            print("📥 [AICardGenerator] Received GPT-5 vision response: \(httpResponse.statusCode)")
             
             guard httpResponse.statusCode == 200 else {
                 print("❌ [AICardGenerator] HTTP Error: \(httpResponse.statusCode)")
@@ -908,19 +865,16 @@ extension AICardGenerator {
             }
             
             // Parse response
-            let chatGPTResponse = try JSONDecoder().decode(ChatGPTResponse.self, from: data)
+            let gpt5Response = try JSONDecoder().decode(GPT5Response.self, from: data)
             
-            guard let choice = chatGPTResponse.choices.first else {
-                throw AIGenerationError.emptyResponse
-            }
-            
-            print("📤 [AICardGenerator] VISION RESPONSE:")
+            print("📤 [AICardGenerator] GPT-5 VISION RESPONSE:")
             print("--- RESPONSE START ---")
-            print(choice.message.content)
+            print("Output text length: \(gpt5Response.text.count)")
+            print("Output text: '\(gpt5Response.text)'")
             print("--- RESPONSE END ---")
             
             // Parse the JSON content
-            let responseData = choice.message.content.data(using: .utf8) ?? Data()
+            let responseData = gpt5Response.text.data(using: .utf8) ?? Data()
             let culturalResponse = try JSONDecoder().decode(CulturalInsightResponse.self, from: responseData)
             
             print("✅ [AICardGenerator] Successfully parsed vision response")
@@ -928,43 +882,9 @@ extension AICardGenerator {
             return culturalResponse
             
         } catch {
-            print("❌ [AICardGenerator] Vision API error: \(error)")
+            print("❌ [AICardGenerator] GPT-5 Vision API error: \(error)")
             throw AIGenerationError.networkError(error.localizedDescription)
         }
     }
 }
 
-// MARK: - Vision API Models
-struct ChatGPTVisionRequest: Codable {
-    let model: String
-    let messages: [ChatGPTVisionMessage]
-    let temperature: Double
-    let maxTokens: Int
-    let responseFormat: ChatGPTRequest.ResponseFormat?
-    
-    enum CodingKeys: String, CodingKey {
-        case model, messages, temperature
-        case maxTokens = "max_tokens"
-        case responseFormat = "response_format"
-    }
-}
-
-struct ChatGPTVisionMessage: Codable {
-    let role: String
-    let content: [ChatGPTVisionContent]
-}
-
-struct ChatGPTVisionContent: Codable {
-    let type: String
-    let text: String?
-    let imageUrl: ChatGPTImageUrl?
-    
-    enum CodingKeys: String, CodingKey {
-        case type, text
-        case imageUrl = "image_url"
-    }
-}
-
-struct ChatGPTImageUrl: Codable {
-    let url: String
-}
