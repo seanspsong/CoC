@@ -1,4 +1,4 @@
-# Cup of Culture (CoC) 🌍
+# LanCards 🌍
 
 An iOS application designed to help international travelers quickly learn destination cultures through an intuitive, card-based interface.
 
@@ -47,8 +47,8 @@ An iOS application designed to help international travelers quickly learn destin
 ## Project Structure 📁
 
 ```
-CoC/
-├── CoCApp.swift           # App entry point
+LanCards/
+├── LanCardsApp.swift      # App entry point
 ├── ContentView.swift      # Main UI implementation
 ├── Models.swift          # Data models (Destination, CulturalCard)
 ├── AICardGenerator.swift # GPT-5 AI integration for cultural insights
@@ -63,8 +63,8 @@ CoC/
 
 1. **Clone the repository:**
    ```bash
-   git clone https://github.com/seanspsong/CoC.git
-   cd CoC
+   git clone https://github.com/seanspsong/LanCards.git
+   cd LanCards
    ```
 
 2. **Configure OpenAI API Key:**
@@ -74,7 +74,7 @@ CoC/
 
 3. **Open in Xcode:**
    ```bash
-   open CoC.xcodeproj
+   open LanCards.xcodeproj
    ```
 
 4. **Build and Run:**
@@ -132,7 +132,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 **Sean Song** - Project Developer
 - GitHub: [@seanspsong](https://github.com/seanspsong)
-- Repository: [CoC](https://github.com/seanspsong/CoC)
+- Repository: [LanCards](https://github.com/seanspsong/LanCards)
 
 ---
 

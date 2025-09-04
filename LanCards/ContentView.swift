@@ -1,6 +1,6 @@
 //
 //  ContentView.swift
-//  CoC
+//  LanCards
 //
 //  Created by Sean Song on 7/2/25.
 //
@@ -268,7 +268,7 @@ struct ContentView: View {
                         
                         // Title in center - Only show in destinations overview
                         if selectedDestination == nil {
-                            Text("CoC: Cup of Culture")
+                            Text("LanCards: LanCards")
                                 .font(.title2)
                                 .fontWeight(.bold)
                                 .foregroundColor(.primary)
@@ -2159,7 +2159,7 @@ struct SettingsView: View {
                 }
                 
                 Section("About") {
-                    Text("Cup of Culture helps international business travelers understand destination cultures through AI-powered insights.")
+                    Text("LanCards helps international business travelers understand destination cultures through AI-powered insights.")
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }

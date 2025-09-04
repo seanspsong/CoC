@@ -13,16 +13,16 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		5A08833E2E14FDBB0000082A /* CoC.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CoC.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		5A08833E2E14FDBB0000082A /* LanCards.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = LanCards.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		5A8320332E15287200B80EB8 /* LICENSE */ = {isa = PBXFileReference; lastKnownFileType = text; path = LICENSE; sourceTree = "<group>"; };
 		5A8320342E15287200B80EB8 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		5A8320352E15287200B80EB8 /* VibeLog.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = VibeLog.md; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		5A0883402E14FDBB0000082A /* CoC */ = {
+		5A0883402E14FDBB0000082A /* LanCards */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			path = CoC;
+			path = LanCards;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -44,7 +44,7 @@
 				5A8320332E15287200B80EB8 /* LICENSE */,
 				5A8320342E15287200B80EB8 /* README.md */,
 				5A8320352E15287200B80EB8 /* VibeLog.md */,
-				5A0883402E14FDBB0000082A /* CoC */,
+				5A0883402E14FDBB0000082A /* LanCards */,
 				5A08833F2E14FDBB0000082A /* Products */,
 			);
 			sourceTree = "<group>";
@@ -52,7 +52,7 @@
 		5A08833F2E14FDBB0000082A /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				5A08833E2E14FDBB0000082A /* CoC.app */,
+				5A08833E2E14FDBB0000082A /* LanCards.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -60,9 +60,9 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		5A08833D2E14FDBB0000082A /* CoC */ = {
+		5A08833D2E14FDBB0000082A /* LanCards */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 5A0883492E14FDBB0000082A /* Build configuration list for PBXNativeTarget "CoC" */;
+			buildConfigurationList = 5A0883492E14FDBB0000082A /* Build configuration list for PBXNativeTarget "LanCards" */;
 			buildPhases = (
 				5A08833A2E14FDBB0000082A /* Sources */,
 				5A08833B2E14FDBB0000082A /* Frameworks */,
@@ -73,13 +73,13 @@
 			dependencies = (
 			);
 			fileSystemSynchronizedGroups = (
-				5A0883402E14FDBB0000082A /* CoC */,
+				5A0883402E14FDBB0000082A /* LanCards */,
 			);
-			name = CoC;
+			name = LanCards;
 			packageProductDependencies = (
 			);
-			productName = CoC;
-			productReference = 5A08833E2E14FDBB0000082A /* CoC.app */;
+			productName = LanCards;
+			productReference = 5A08833E2E14FDBB0000082A /* LanCards.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -97,7 +97,7 @@
 					};
 				};
 			};
-			buildConfigurationList = 5A0883392E14FDBB0000082A /* Build configuration list for PBXProject "CoC" */;
+			buildConfigurationList = 5A0883392E14FDBB0000082A /* Build configuration list for PBXProject "LanCards" */;
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
@@ -111,7 +111,7 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				5A08833D2E14FDBB0000082A /* CoC */,
+				5A08833D2E14FDBB0000082A /* LanCards */,
 			);
 		};
 /* End PBXProject section */
@@ -283,7 +283,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.hidock.ppnotes.CoC;
+				PRODUCT_BUNDLE_IDENTIFIER = com.hidock.ppnotes.LanCards;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
@@ -316,7 +316,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.hidock.ppnotes.CoC;
+				PRODUCT_BUNDLE_IDENTIFIER = com.hidock.ppnotes.LanCards;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
@@ -330,7 +330,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		5A0883392E14FDBB0000082A /* Build configuration list for PBXProject "CoC" */ = {
+		5A0883392E14FDBB0000082A /* Build configuration list for PBXProject "LanCards" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				5A0883472E14FDBB0000082A /* Debug */,
@@ -339,7 +339,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		5A0883492E14FDBB0000082A /* Build configuration list for PBXNativeTarget "CoC" */ = {
+		5A0883492E14FDBB0000082A /* Build configuration list for PBXNativeTarget "LanCards" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				5A08834A2E14FDBB0000082A /* Debug */,

@@ -1,6 +1,6 @@
-# VibeLog - Cup of Culture Development Journey
+# VibeLog - LanCards Development Journey
 
-A log to track the development process, vibes, achievements, and lessons learned while building Cup of Culture (CoC) - a cultural learning iOS app for international business and travel.
+A log to track the development process, vibes, achievements, and lessons learned while building LanCards - a cultural learning iOS app for international business and travel.
 
 ## Format
 - **Log ID**: VL#### (sequential)
@@ -36,7 +36,7 @@ A log to track the development process, vibes, achievements, and lessons learned
 - **Achievement**: 
   - ✅ Added MIT License with proper copyright notice (2025 Sean Song)
   - ✅ Enhanced README with detailed setup instructions and contribution guidelines
-  - ✅ Moved README.md into CoC/ directory for Xcode project visibility
+  - ✅ Moved README.md into LanCards/ directory for Xcode project visibility
   - ✅ Specified iOS 17.0+ minimum version and MVVM architecture
   - ✅ Added comprehensive license summary with usage permissions
   - ✅ Created professional project presentation for potential contributors
@@ -342,7 +342,7 @@ A log to track the development process, vibes, achievements, and lessons learned
 - **Date**: 2025-01-03
 - **Vibe Summary**: Title repositioning and UI cleanup for destinations overview. Moved app title to float between action buttons for better visual balance and cleaner interface design.
 - **Achievement**: 
-  - ✅ Repositioned "CoC: Cup of Culture" title between + button and settings button at top
+  - ✅ Repositioned "LanCards: Cup of Culture" title between + button and settings button at top
   - ✅ Removed green border styling for cleaner, minimalist appearance
   - ✅ Added conditional display logic to show title only in destinations overview
   - ✅ Cleaned up DestinationsOverviewView structure removing unnecessary VStack wrapper

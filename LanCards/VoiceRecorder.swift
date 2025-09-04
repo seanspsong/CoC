@@ -1,6 +1,6 @@
 //
 //  VoiceRecorder.swift
-//  CoC
+//  LanCards
 //
 //  Created by Sean Song on 7/2/25.
 //
