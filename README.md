@@ -11,13 +11,16 @@ An iOS application designed to help international travelers quickly learn destin
 
 ### 🌍 **Cultural Knowledge System**
 - **Destination Cards**: Elegant card views showcasing countries with flags and cultural information
-- **Cultural Cards**: Six distinct categories of cultural knowledge:
+- **Cultural Cards**: Eight distinct categories of cultural knowledge:
   - 🤝 Business Etiquette
   - 🎭 Social Customs  
   - 🍽️ Dining Culture
   - 💬 Communication
   - 🎁 Gift Giving
-  - ⚡ Quick Facts
+  - ⏰ Time Management
+  - 👑 Hierarchy
+  - 👋 Greeting Customs
+- **AI-Powered Insights**: GPT-5 generates personalized cultural insights from voice input
 
 ### 🎯 **Intuitive Navigation**
 - Full-screen destination overview with responsive grid layout
@@ -25,10 +28,11 @@ An iOS application designed to help international travelers quickly learn destin
 - Smooth navigation between destinations and cultural details
 - One-tap access to cultural cards with detailed information
 
-### 📱 **Sample Content**
-- Pre-loaded with comprehensive cultural data for Japan and Germany
-- Real-world cultural insights and practical business tips
-- Expandable content system for adding more destinations
+### 📱 **AI-Powered Content Generation**
+- **Voice Input**: Speak your cultural questions and get instant insights
+- **GPT-5 Integration**: Advanced AI generates personalized cultural knowledge
+- **Dynamic Content**: Real-time cultural insights based on your specific questions
+- **Multi-language Support**: Bilingual cultural concepts with local translations
 
 ## Technical Specifications 🛠️
 
@@ -36,6 +40,7 @@ An iOS application designed to help international travelers quickly learn destin
 - **Framework**: SwiftUI
 - **Architecture**: MVVM (Model-View-ViewModel)
 - **Language**: Swift 5
+- **AI Integration**: GPT-5 Responses API
 - **Design Pattern**: Card-based UI with floating elements
 - **Color Theme**: Purple (#8A2BE2) with modern gradients and shadows
 
@@ -46,6 +51,9 @@ CoC/
 ├── CoCApp.swift           # App entry point
 ├── ContentView.swift      # Main UI implementation
 ├── Models.swift          # Data models (Destination, CulturalCard)
+├── AICardGenerator.swift # GPT-5 AI integration for cultural insights
+├── DataManager.swift     # Data persistence and management
+├── VoiceRecorder.swift   # Voice input functionality
 ├── Assets.xcassets/      # App icons and assets
 ├── VibeLog.md           # Development documentation
 └── README.md            # This file
@@ -59,29 +67,35 @@ CoC/
    cd CoC
    ```
 
-2. **Open in Xcode:**
+2. **Configure OpenAI API Key:**
+   - Get your OpenAI API key from [OpenAI Platform](https://platform.openai.com/api-keys)
+   - Add the key to your iOS device's Settings app
+   - The app will automatically detect and use your API key
+
+3. **Open in Xcode:**
    ```bash
    open CoC.xcodeproj
    ```
 
-3. **Build and Run:**
+4. **Build and Run:**
    - Select your target device (iPhone/iPad simulator or physical device)
    - Press `Cmd + R` to build and run
-   - App will automatically load with sample cultural data
+   - App will automatically load with AI-powered cultural insights
 
 ## Usage Guide 👆
 
 ### Main Interface
 - **Browse Destinations**: Scroll through the card-based destination overview
 - **Tap Destinations**: Tap any destination card to view cultural details
-- **Add Content**: Use the purple + button to add new destinations or cultural cards
+- **Voice Input**: Use the microphone button to ask cultural questions
 - **Settings**: Access app preferences via the ⚙️ settings button
 
-### Cultural Learning
-- Each destination contains multiple cultural cards
-- Cards are organized by category with visual icons
-- Tap any cultural card to expand and read detailed information
-- Navigate back using the purple "Back" button
+### AI-Powered Cultural Learning
+- **Ask Questions**: Tap the microphone and speak your cultural questions
+- **Get Instant Insights**: GPT-5 generates personalized cultural knowledge
+- **Explore Categories**: View cultural cards organized by category
+- **Bilingual Content**: See cultural concepts in both English and local languages
+- **Dynamic Content**: Each question generates unique, relevant cultural insights
 
 ## Color Theme 🎨
 
